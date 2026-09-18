@@ -135,6 +135,10 @@ export async function setAdminCredentials(value) {
   );
 }
 
+export async function deleteAdminCredentials() {
+  await store('sapucaia-config').delete(ADMIN_KEY);
+}
+
 export function hashPassword(
   password,
   salt = crypto.randomBytes(16).toString('hex')
