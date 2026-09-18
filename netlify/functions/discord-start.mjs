@@ -8,7 +8,7 @@ function getDiscordConfig(req) {
   ).trim();
 
   const redirectUri =
-    'https://sapucaia-rj-lojaa-ofical.netlify.app/api/discord-callback';
+  'https://sapucaia-rj-lojaa-ofical.netlify.app/api/discord-callback';
 
   return { clientId, redirectUri };
 }
