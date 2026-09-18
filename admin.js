@@ -6,7 +6,7 @@ const DEFAULT_APPEARANCE = {
   city: 'RIO DE JANEIRO',
   heroTitle: 'SAPUCAIA',
   heroSubtitle: 'RIO DE JANEIRO',
-  heroButtonText: 'Ver produtos',
+  heroButtonText: 'Ver produts',
   heroButtonUrl: '#categorias',
 
   primaryColor: '#ff087f',
