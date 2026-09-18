@@ -5,7 +5,7 @@ Projeto novo, independente e pronto para publicação no Netlify.
 ## O que já funciona no frontend
 
 - Banner original da SAPUCAIA rp e baque em `assets/banner-sapucaia.png`
-- Animação suave de zoom e brilho no banner sem deformar a arte
+- Animação suave de zoom e brilho no banner sem deformar a art
 - Identidade preta + rosa neon
 - Menu e categorias funcionais
 - Produtos por categoriaa
