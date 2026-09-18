@@ -17,7 +17,7 @@ export default async req=>{
     if(password!==confirmation) return json({error:'As senhas não coincidem.'},400);
     const hashed=hashPassword(password);await setAdminCredentials({username, ...hashed,createdAt:new Date().toISOString()});
     const token=signSession({role:'admin',username,exp:Date.now()+8*60*60*1000});
-    return new Response(JSON.stringify({ok:true,authenticated:true}),{status:200,headers:{'content-type':'application/json; charset=utf-8','Set-Cookie':cookie('sapucaia_session',token,{maxAge:8*60*60})}});
+    return new Response(JSON.stringify({ok:true,authenticated:true,token}),{status:200,headers:{'content-type':'application/json; charset=utf-8','Set-Cookie':cookie('sapucaia_session',token,{maxAge:8*60*60})}});
   }
   if(body.action==='logout') return new Response(JSON.stringify({ok:true}),{status:200,headers:{'content-type':'application/json; charset=utf-8','Set-Cookie':cookie('sapucaia_session','',{maxAge:0})}});
   if(body.action==='change-credentials'){
@@ -28,11 +28,11 @@ export default async req=>{
     if(username.length<3||nextPassword.length<8||nextPassword!==String(body.confirmation||''))return json({error:'Dados das novas credenciais inválidos.'},400);
     const next={username,...hashPassword(nextPassword),updatedAt:new Date().toISOString()};await setAdminCredentials(next);
     const token=signSession({role:'admin',username,exp:Date.now()+8*60*60*1000});
-    return new Response(JSON.stringify({ok:true}),{status:200,headers:{'content-type':'application/json; charset=utf-8','Set-Cookie':cookie('sapucaia_session',token,{maxAge:8*60*60})}});
+    return new Response(JSON.stringify({ok:true,token}),{status:200,headers:{'content-type':'application/json; charset=utf-8','Set-Cookie':cookie('sapucaia_session',token,{maxAge:8*60*60})}});
   }
   const username=String(body.username||'').trim();const password=String(body.password||'');
   if(!creds)return json({error:'Primeiro acesso necessário.'},409);
   if(username!==creds.username||!verifyPassword(password,creds))return json({error:'Usuário ou senha inválidos.'},401);
   const token=signSession({role:'admin',username,exp:Date.now()+8*60*60*1000});
-  return new Response(JSON.stringify({ok:true,authenticated:true}),{status:200,headers:{'content-type':'application/json; charset=utf-8','Set-Cookie':cookie('sapucaia_session',token,{maxAge:8*60*60})}});
+  return new Response(JSON.stringify({ok:true,authenticated:true,token}),{status:200,headers:{'content-type':'application/json; charset=utf-8','Set-Cookie':cookie('sapucaia_session',token,{maxAge:8*60*60})}});
 };
