@@ -86,7 +86,7 @@ const state = {
   orders: [],
   customers: [],
   settings: {},
-  draft: JSON.parse(JSON.stringify(DEFAULT_APPEARANCE)),
+  draft: structuredClone(DEFAULT_APPEARANCE),
 
   history: [],
   historyIndex: -1,
@@ -117,11 +117,6 @@ function clone(v) {
   return JSON.parse(JSON.stringify(v));
 }
 
-function makeId() {
-  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
-  return `prod-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
 function toast(message) {
   const el = $('#toast');
 
@@ -137,69 +132,67 @@ function toast(message) {
   }, 2600);
 }
 
+let adminToken = sessionStorage.getItem('sapucaia_admin_token') || '';
+
+function rememberAdminToken(token) {
+  adminToken = String(token || '');
+  if (adminToken) sessionStorage.setItem('sapucaia_admin_token', adminToken);
+  else sessionStorage.removeItem('sapucaia_admin_token');
+}
+
 async function api(url, options = {}) {
-  const candidates = [];
-  const add = (value) => {
-    if (value && !candidates.includes(value)) candidates.push(value);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+
+  const request = {
+    credentials: 'same-origin',
+    cache: 'no-store',
+    ...options,
+    signal: controller.signal
   };
 
-  add(url);
-  if (url.startsWith('/api/')) {
-    const path = url.slice('/api/'.length);
-    add(`/.netlify/functions/${path}`);
+  request.headers = new Headers(request.headers || {});
+  if (adminToken && !request.headers.has('Authorization')) {
+    request.headers.set('Authorization', `Bearer ${adminToken}`);
   }
 
-  let lastError = null;
+  let response;
 
-  for (const endpoint of candidates) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 15000);
-    const request = {
-      credentials: 'same-origin',
-      cache: 'no-store',
-      ...options,
-      signal: controller.signal
-    };
-
-    try {
-      const response = await fetch(endpoint, request);
-      const text = await response.text();
-      let data = {};
-
-      try {
-        data = text ? JSON.parse(text) : {};
-      } catch {
-        throw new Error(`Servidor respondeu de forma inválida (${response.status}).`);
-      }
-
-      // Um 404 na rota /api pode ser apenas problema de redirect do Netlify.
-      // Nesse caso tentamos a URL direta da Function.
-      if (!response.ok) {
-        const detail = data.error || data.message || '';
-        const error = new Error(
-          detail ? `${detail} (HTTP ${response.status})` : `Erro do servidor (HTTP ${response.status}).`
-        );
-        error.status = response.status;
-        if (response.status === 404 && endpoint !== candidates[candidates.length - 1]) {
-          lastError = error;
-          continue;
-        }
-        throw error;
-      }
-
-      return data;
-    } catch (error) {
-      lastError = error;
-      if (error?.name === 'AbortError') {
-        lastError = new Error('Tempo limite ao conectar com o servidor.');
-      }
-      if (endpoint !== candidates[candidates.length - 1]) continue;
-    } finally {
-      clearTimeout(timer);
+  try {
+    response = await fetch(url, request);
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('Tempo limite ao conectar com o servidor.');
     }
+    throw new Error('Não foi possível conectar com o servidor.');
+  } finally {
+    clearTimeout(timer);
   }
 
-  throw lastError || new Error('Não foi possível conectar com o servidor.');
+  const text = await response.text();
+
+  let data = {};
+
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error(
+      `Servidor respondeu de forma inválida (${response.status}).`
+    );
+  }
+
+  if (!response.ok) {
+    const detail = data.error || data.message || '';
+    throw new Error(
+      detail
+        ? `${detail} (HTTP ${response.status})`
+        : `Erro do servidor (HTTP ${response.status}).`
+    );
+  }
+
+  if (data && data.token) rememberAdminToken(data.token);
+
+  return data;
 }
 
 function showSetup() {
@@ -383,6 +376,7 @@ $('#logoutBtn')?.addEventListener(
       })
     }).catch(() => {});
 
+    rememberAdminToken('');
     location.reload();
   }
 );
@@ -461,85 +455,61 @@ $('#mobileMenu')?.addEventListener(
 
 async function loadAll() {
   try {
-    const results = await Promise.allSettled([
-      api('/api/store?resource=products'),
-      api('/api/store?resource=orders'),
-      api('/api/store?resource=customers'),
-      api('/api/store?resource=settings-admin')
-    ]);
+    const sync = await api(
+      '/api/store?resource=sync'
+    );
 
-    const [products, orders, customers, settings] = results;
+    state.products =
+      Array.isArray(sync.products)
+        ? sync.products
+        : [];
 
-    if (products.status === 'rejected') {
-      throw products.reason;
-    }
+    state.orders =
+      Array.isArray(sync.orders)
+        ? sync.orders
+        : [];
 
-    state.products = Array.isArray(products.value?.products)
-      ? products.value.products : [];
-    state.orders = orders.status === 'fulfilled' && Array.isArray(orders.value?.orders)
-      ? orders.value.orders : [];
-    state.customers = customers.status === 'fulfilled' && Array.isArray(customers.value?.customers)
-      ? customers.value.customers : [];
+    state.customers =
+      Array.isArray(sync.customers)
+        ? sync.customers
+        : [];
+
     state.settings = {
       ...DEFAULT_APPEARANCE,
-      ...(settings.status === 'fulfilled' ? (settings.value?.settings || {}) : {})
+      ...(sync.settings || {})
     };
-    state.draft = clone(state.settings);
+
+    state.draft =
+      clone(state.settings);
+
     resetHistory();
+
     fillAllSettings();
+
     renderAll();
 
-    const page = location.hash.slice(1);
-    if (page && $('#' + page)) go(page);
+    const page =
+      location.hash.slice(1);
 
-    const status = $('#adminStatus');
-    if (status) {
-      const partial = orders.status !== 'fulfilled' || customers.status !== 'fulfilled' || settings.status !== 'fulfilled';
-      status.textContent = partial ? '● Loja conectada (parcial)' : '● Loja conectada';
-      status.title = partial ? 'Produtos carregados; algum recurso administrativo não respondeu.' : '';
+    if (
+      page &&
+      $('#' + page)
+    ) {
+      go(page);
     }
   } catch (error) {
-    console.error('SAPUCAIA LOAD:', error);
-    if (String(error?.message || '').includes('401') || String(error?.message || '').includes('Não autorizado')) {
-      showLogin();
-      return;
+    console.error(error);
+
+    if (
+      error.message.includes(
+        'Não autorizado'
+      )
+    ) {
+      return showLogin();
     }
-    const status = $('#adminStatus');
-    if (status) {
-      status.textContent = '● Loja offline';
-      status.title = error?.message || 'Não foi possível carregar os produtos.';
-    }
-    toast(error?.message || 'Não foi possível conectar com a loja.');
+
+    toast(error.message);
   }
-}
-
-function renderOrders() {
-  const table = $('#orderTable');
-  if (!table) return;
-  const filter = $('#orderStatusFilter')?.value || '';
-  const list = state.orders.filter(order => !filter || String(order.status || '') === filter);
-  if (!list.length) { table.innerHTML = '<div class="empty">Nenhum pedido encontrado.</div>'; return; }
-  table.innerHTML = `<table class="data-table"><thead><tr><th>PEDIDO</th><th>CLIENTE</th><th>STATUS</th><th>TOTAL</th><th>DATA</th></tr></thead><tbody>${list.map(order => {
-    const customer = order.personal || order.customer || {};
-    const date = order.createdAt || order.updatedAt;
-    return `<tr><td>${esc(order.id || '-')}</td><td>${esc(customer.name || order.name || 'Cliente')}</td><td>${esc(order.status || '-')}</td><td>${money(order.total)}</td><td>${esc(date ? new Date(date).toLocaleString('pt-BR') : '-')}</td></tr>`;
-  }).join('')}</tbody></table>`;
-}
-
-function renderCustomers() {
-  const table = $('#customerTable');
-  if (!table) return;
-  if (!state.customers.length) { table.innerHTML = '<div class="empty">Nenhum cliente encontrado.</div>'; return; }
-  table.innerHTML = `<table class="data-table"><thead><tr><th>NOME</th><th>E-MAIL</th><th>TELEFONE</th><th>CPF</th></tr></thead><tbody>${state.customers.map(customer => `<tr><td>${esc(customer.name || customer.nome || '-')}</td><td>${esc(customer.email || '-')}</td><td>${esc(customer.phone || customer.telefone || '-')}</td><td>${esc(customer.cpf || '-')}</td></tr>`).join('')}</tbody></table>`;
-}
-
-function renderCoupon() {
-  const code = String(state.settings?.couponCode || '').trim().toUpperCase();
-  const percent = Math.max(0, Math.min(100, Number(state.settings?.couponPercent) || 0));
-  if ($('#couponCodeAdmin') && document.activeElement !== $('#couponCodeAdmin')) $('#couponCodeAdmin').value = code;
-  if ($('#couponPercentAdmin') && document.activeElement !== $('#couponPercentAdmin')) $('#couponPercentAdmin').value = percent || '';
-  if ($('#couponPreview')) $('#couponPreview').textContent = code || 'SAPUCAIA50';
-  if ($('#couponHeadline')) $('#couponHeadline').textContent = `${percent || 50}% OFF EM TODOS OS PRODUTOS`;
 }
 
 function renderAll() {
@@ -1152,7 +1122,7 @@ function openProduct(id = null) {
     product?.promoPrice ||
     '';
 
-  $('#fOld')?.setAttribute('value', '');
+  $('#fOld').value = '';
 
   $('#fFeatured').value =
     String(
@@ -1271,7 +1241,7 @@ function getProductFormData() {
   return {
     id:
       state.editing?.id ||
-      makeId(),
+      crypto.randomUUID(),
 
     name:
       $('#fName')?.value.trim() ||
@@ -2695,22 +2665,5 @@ async function syncAdminNow() {
 }
 
 setInterval(syncAdminNow, 3000);
-
-// Nunca deixe o /admin completamente vazio por causa de uma exceção de JS.
-window.addEventListener('error', (event) => {
-  console.error('SAPUCAIA ADMIN ERROR:', event.error || event.message);
-  const app = $('#app');
-  const login = $('#loginScreen');
-  const setup = $('#setupScreen');
-  if (app && login && setup && app.classList.contains('hidden') && setup.classList.contains('hidden')) {
-    login.classList.remove('hidden');
-  }
-  const status = $('#adminStatus');
-  if (status) status.textContent = '● Erro no painel';
-});
-
-window.addEventListener('unhandledrejection', (event) => {
-  console.error('SAPUCAIA ADMIN REJECTION:', event.reason);
-});
 
 boot();
