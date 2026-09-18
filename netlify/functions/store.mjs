@@ -585,6 +585,7 @@ export default async function handler(req) {
           products:
             Array.isArray(list)
               ? list
+                  .map(p => normalizeProduct(p, { existing: p }))
                   .filter(p => p && p.published === true && p.active !== false)
                   .map(publicProduct)
               : [],
@@ -793,13 +794,20 @@ export default async function handler(req) {
         );
 
       /*
-       * SAVE
+       * SAVE — aceita tanto o formato atual
+       * { action:'save', product:{...} }
+       * quanto o formato legado que enviava
+       * o produto diretamente no body.
        */
+      const incomingProduct =
+        body && body.product && typeof body.product === 'object'
+          ? body.product
+          : body;
 
       if (
-        body.action === 'save'
+        body.action === 'save' ||
+        (incomingProduct && incomingProduct.name)
       ) {
-        const incomingProduct=body.product||{};
         const existingIndex=list.findIndex(item=>String(item.id)===String(incomingProduct.id||''));
         const existing=existingIndex>=0?list[existingIndex]:{};
         const product=normalizeProduct(incomingProduct,{existing});
