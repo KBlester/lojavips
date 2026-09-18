@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 
-import {
+mport {
   getJSON,
   putJSON,
   json,
