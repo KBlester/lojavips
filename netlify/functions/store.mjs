@@ -1047,6 +1047,11 @@ export default async function handler(req) {
       const list =
         await orders();
 
+      const body =
+        await req.json().catch(
+          () => ({})
+        );
+
       if (
         body.action === 'status'
       ) {
