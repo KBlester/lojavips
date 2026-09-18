@@ -133,11 +133,28 @@ function toast(message) {
 }
 
 async function api(url, options = {}) {
-  const response = await fetch(url, {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+
+  const request = {
     credentials: 'same-origin',
     cache: 'no-store',
-    ...options
-  });
+    ...options,
+    signal: controller.signal
+  };
+
+  let response;
+
+  try {
+    response = await fetch(url, request);
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('Tempo limite ao conectar com o servidor.');
+    }
+    throw new Error('Não foi possível conectar com o servidor.');
+  } finally {
+    clearTimeout(timer);
+  }
 
   const text = await response.text();
 
@@ -147,12 +164,17 @@ async function api(url, options = {}) {
     data = text ? JSON.parse(text) : {};
   } catch {
     throw new Error(
-      `Resposta inválida do servidor (${response.status}).`
+      `Servidor respondeu de forma inválida (${response.status}).`
     );
   }
 
   if (!response.ok) {
-    throw new Error(data.error || `Erro ${response.status}`);
+    const detail = data.error || data.message || '';
+    throw new Error(
+      detail
+        ? `${detail} (HTTP ${response.status})`
+        : `Erro do servidor (HTTP ${response.status}).`
+    );
   }
 
   return data;
@@ -2545,9 +2567,35 @@ async function syncAdminNow() {
   syncInFlight = true;
 
   try {
-    const sync = await api(
-      '/api/store?resource=sync'
-    );
+    let sync;
+
+    try {
+      sync = await api('/api/store?resource=sync');
+    } catch (firstError) {
+      // Compatibilidade com deploys antigos que ainda não possuem
+      // o endpoint agregado de sincronização.
+      if (String(firstError?.message || '').includes('HTTP 404')) {
+        const [products, orders, customers, settings] =
+          await Promise.all([
+            api('/api/store?resource=products'),
+            api('/api/store?resource=orders'),
+            api('/api/store?resource=customers'),
+            api('/api/store?resource=settings-admin')
+          ]);
+
+        sync = {
+          ok: true,
+          connected: true,
+          partial: false,
+          products: products.products || [],
+          orders: orders.orders || [],
+          customers: customers.customers || [],
+          settings: settings.settings || null
+        };
+      } else {
+        throw firstError;
+      }
+    }
 
     if (Array.isArray(sync.products)) {
       state.products = sync.products;
@@ -2575,21 +2623,25 @@ async function syncAdminNow() {
       if (sync.connected && sync.partial) {
         status.textContent =
           '● Conectado (sincronização parcial)';
-      } else if (sync.connected && sync.ok) {
-        status.textContent =
-          '● Sincronizado';
+        status.title = Array.isArray(sync.errors)
+          ? sync.errors.map(e => `${e.resource}: ${e.error}`).join(' | ')
+          : '';
       } else {
-        status.textContent =
-          '● Conectado';
+        status.textContent = '● Sincronizado';
+        status.title = '';
       }
     }
   } catch (error) {
     console.error('SAPUCAIA SYNC:', error);
+
+    if (String(error?.message || '').includes('HTTP 401')) {
+      showLogin();
+    }
+
     const status = $('#adminStatus');
     if (status) {
-      status.textContent =
-        '● Erro de conexão com o servidor';
-      status.title = error?.message || '';
+      status.textContent = '● Erro de conexão com o servidor';
+      status.title = error?.message || 'Falha ao sincronizar.';
     }
   } finally {
     syncInFlight = false;
