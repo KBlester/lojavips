@@ -2552,35 +2552,39 @@ setInterval(
     }
 
     try {
-      const [
-        p,
-        o,
-        c
-      ] = await Promise.all([
-        api(
-          '/api/store?resource=products'
-        ),
-        api(
-          '/api/store?resource=orders'
-        ),
-        api(
-          '/api/store?resource=customers'
-        )
+      const [p, o, c] = await Promise.allSettled([
+        api('/api/store?resource=products'),
+        api('/api/store?resource=orders'),
+        api('/api/store?resource=customers')
       ]);
 
-      state.products =
-        p.products || [];
+      let ok = 0;
 
-      state.orders =
-        o.orders || [];
+      if (p.status === 'fulfilled') {
+        state.products = p.value.products || [];
+        ok++;
+      }
 
-      state.customers =
-        c.customers || [];
+      if (o.status === 'fulfilled') {
+        state.orders = o.value.orders || [];
+        ok++;
+      }
 
-      renderAll();
+      if (c.status === 'fulfilled') {
+        state.customers = c.value.customers || [];
+        ok++;
+      }
 
-      $('#adminStatus').textContent =
-        '● Sincronizado';
+      if (ok > 0) {
+        renderAll();
+        $('#adminStatus').textContent =
+          ok === 3
+            ? '● Sincronizado'
+            : '● Conectado (sincronização parcial)';
+      } else {
+        $('#adminStatus').textContent =
+          '● Aguardando conexão';
+      }
     } catch {
       $('#adminStatus').textContent =
         '● Aguardando conexão';
