@@ -132,106 +132,78 @@ function toast(message) {
   }, 2600);
 }
 
+const API_ROUTES = {
+  auth: ['/api/auth', '/.netlify/functions/auth'],
+  store: ['/api/store', '/.netlify/functions/store']
+};
+
+function resolveApiCandidates(url) {
+  if (url.startsWith('/api/auth')) {
+    const suffix = url.slice('/api/auth'.length);
+    return API_ROUTES.auth.map(base => `${base}${suffix}`);
+  }
+  if (url.startsWith('/api/store')) {
+    const suffix = url.slice('/api/store'.length);
+    return API_ROUTES.store.map(base => `${base}${suffix}`);
+  }
+  return [url];
+}
+
 async function api(url, options = {}) {
-  /*
-   * NOVA CAMADA DE COMUNICAÇÃO DO ADM
-   *
-   * O painel não depende mais exclusivamente de /api/*.
-   * Em produção, tenta primeiro a rota nativa da Function e,
-   * se ela não estiver disponível, usa o proxy /api/*.
-   *
-   * Isso evita que uma falha de redirect/rewrite do Netlify
-   * derrube todo o painel.
-   */
-  const isApi = String(url).startsWith('/api/');
-  const functionUrl = isApi
-    ? String(url).replace(/^\/api\//, '/.netlify/functions/')
-    : String(url);
-
-  const candidates = isApi
-    ? [functionUrl, String(url)]
-    : [String(url)];
-
+  const candidates = resolveApiCandidates(url);
   let lastError = null;
 
-  for (let index = 0; index < candidates.length; index++) {
-    const target = candidates[index];
+  for (let i = 0; i < candidates.length; i += 1) {
+    const endpoint = candidates[i];
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 12000);
+    const request = {
+      credentials: 'same-origin',
+      cache: 'no-store',
+      ...options,
+      signal: controller.signal
+    };
 
     try {
-      const response = await fetch(target, {
-        credentials: 'same-origin',
-        cache: 'no-store',
-        ...options,
-        signal: controller.signal
-      });
-
+      const response = await fetch(endpoint, request);
       const text = await response.text();
       let data = {};
 
       try {
         data = text ? JSON.parse(text) : {};
       } catch {
-        throw new Error(
-          `Servidor respondeu de forma inválida (${response.status}).`
-        );
+        throw new Error(`Servidor respondeu de forma inválida (${response.status}).`);
+      }
+
+      // Se a rota amigável não existir, tenta a Function diretamente.
+      if ((response.status === 404 || response.status === 405) && i < candidates.length - 1) {
+        lastError = new Error(`HTTP ${response.status}`);
+        continue;
       }
 
       if (!response.ok) {
         const detail = data.error || data.message || '';
-
-        const error = new Error(
-          detail
-            ? `${detail} (HTTP ${response.status})`
-            : `Erro do servidor (HTTP ${response.status}).`
-        );
-        error.status = response.status;
-
-        /*
-         * GET pode tentar a segunda rota quando a primeira não existe.
-         * POST/DELETE não são repetidos após erro de execução para
-         * nunca duplicar uma gravação.
-         */
-        const canRetry =
-          index < candidates.length - 1 &&
-          [404, 405].includes(response.status);
-
-        if (canRetry) {
-          lastError = error;
-          continue;
-        }
-
-        throw error;
+        throw new Error(detail ? `${detail} (HTTP ${response.status})` : `Erro do servidor (HTTP ${response.status}).`);
       }
 
       return data;
     } catch (error) {
       lastError = error;
-
-      const method = String(options.method || 'GET').toUpperCase();
-      const canRetry =
-        index < candidates.length - 1 &&
-        method === 'GET' &&
-        (!error.status || [404, 405].includes(error.status));
-
-      if (canRetry) continue;
-
       if (error?.name === 'AbortError') {
+        if (i < candidates.length - 1) continue;
         throw new Error('Tempo limite ao conectar com o servidor.');
       }
-
-      if (error instanceof TypeError) {
-        throw new Error('Não foi possível conectar com o servidor.');
+      if (i < candidates.length - 1 && (String(error?.message || '').includes('Failed to fetch') || String(error?.message || '').includes('Não foi possível'))) {
+        continue;
       }
-
+      if (i < candidates.length - 1 && String(error?.message || '').startsWith('HTTP ')) continue;
       throw error;
     } finally {
       clearTimeout(timer);
     }
   }
 
-  throw lastError || new Error('Servidor indisponível.');
+  throw lastError || new Error('Não foi possível conectar com o servidor.');
 }
 
 function showSetup() {
@@ -493,60 +465,52 @@ $('#mobileMenu')?.addEventListener(
 
 async function loadAll() {
   try {
-    const sync = await api(
-      '/api/store?resource=sync'
-    );
+    // O painel não depende mais de uma única chamada agregada.
+    // Cada recurso é carregado isoladamente para que uma falha em
+    // pedidos/clientes não impeça os produtos de aparecerem.
+    const [products, orders, customers, settings] = await Promise.allSettled([
+      api('/api/store?resource=products'),
+      api('/api/store?resource=orders'),
+      api('/api/store?resource=customers'),
+      api('/api/store?resource=settings-admin')
+    ]);
 
-    state.products =
-      Array.isArray(sync.products)
-        ? sync.products
-        : [];
+    if (products.status === 'rejected') throw products.reason;
 
-    state.orders =
-      Array.isArray(sync.orders)
-        ? sync.orders
-        : [];
-
-    state.customers =
-      Array.isArray(sync.customers)
-        ? sync.customers
-        : [];
-
+    state.products = Array.isArray(products.value.products) ? products.value.products : [];
+    state.orders = orders.status === 'fulfilled' && Array.isArray(orders.value.orders) ? orders.value.orders : [];
+    state.customers = customers.status === 'fulfilled' && Array.isArray(customers.value.customers) ? customers.value.customers : [];
     state.settings = {
       ...DEFAULT_APPEARANCE,
-      ...(sync.settings || {})
+      ...(settings.status === 'fulfilled' ? settings.value.settings || {} : {})
     };
 
-    state.draft =
-      clone(state.settings);
-
+    state.draft = clone(state.settings);
     resetHistory();
-
     fillAllSettings();
-
     renderAll();
 
-    const page =
-      location.hash.slice(1);
-
-    if (
-      page &&
-      $('#' + page)
-    ) {
-      go(page);
+    const status = $('#adminStatus');
+    if (status) {
+      status.textContent = (orders.status === 'fulfilled' && customers.status === 'fulfilled')
+        ? '● Loja conectada'
+        : '● Loja conectada (parcial)';
+      status.title = '';
     }
-  } catch (error) {
-    console.error(error);
 
-    if (
-      error.message.includes(
-        'Não autorizado'
-      )
-    ) {
+    const page = location.hash.slice(1);
+    if (page && $('#' + page)) go(page);
+  } catch (error) {
+    console.error('SAPUCAIA LOAD:', error);
+    if (String(error?.message || '').includes('Não autorizado')) {
       return showLogin();
     }
-
-    toast(error.message);
+    const status = $('#adminStatus');
+    if (status) {
+      status.textContent = '● Loja offline';
+      status.title = error?.message || 'Não foi possível carregar os produtos.';
+    }
+    toast(error.message || 'Não foi possível conectar com a loja.');
   }
 }
 
@@ -1232,7 +1196,16 @@ $('#closeProduct')?.addEventListener(
 // Abre o editor de novo produto pelo botão do catálogo.
 $('#addProductBtn')?.addEventListener(
   'click',
-  () => openProduct()
+  (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    try {
+      openProduct();
+    } catch (error) {
+      console.error('SAPUCAIA NEW PRODUCT:', error);
+      toast(error?.message || 'Não foi possível abrir o editor de produto.');
+    }
+  }
 );
 
 $('#productModal')?.addEventListener(
@@ -1279,7 +1252,7 @@ function getProductFormData() {
   return {
     id:
       state.editing?.id ||
-      crypto.randomUUID(),
+      (globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `product-${Date.now()}-${Math.random().toString(36).slice(2)}`),
 
     name:
       $('#fName')?.value.trim() ||
@@ -2613,135 +2586,19 @@ $('#changeCredentials').onclick =
   };
 
 let syncInFlight = false;
-let lastSuccessfulSync = 0;
 
 async function syncAdminNow() {
-  if (syncInFlight) return;
-  if ($('#app')?.classList.contains('hidden')) return;
-
+  if (syncInFlight || $('#app')?.classList.contains('hidden')) return;
   syncInFlight = true;
-
-  const status = $('#adminStatus');
-
   try {
-    let sync = null;
-
-    /*
-     * Caminho principal: uma única leitura.
-     */
-    try {
-      sync = await api('/api/store?resource=sync');
-    } catch (syncError) {
-      /*
-       * Fallback real: se o agregado falhar, cada recurso é
-       * consultado separadamente. Uma falha isolada não derruba
-       * produtos, configurações ou o restante do painel.
-       */
-      if (String(syncError?.message || '').includes('HTTP 401')) {
-        throw syncError;
-      }
-
-      const results = await Promise.allSettled([
-        api('/api/store?resource=products'),
-        api('/api/store?resource=orders'),
-        api('/api/store?resource=customers'),
-        api('/api/store?resource=settings-admin')
-      ]);
-
-      const [productsResult, ordersResult, customersResult, settingsResult] = results;
-
-      const usable =
-        results.some(result => result.status === 'fulfilled');
-
-      if (!usable) {
-        throw syncError;
-      }
-
-      sync = {
-        ok: true,
-        connected: true,
-        partial: results.some(result => result.status === 'rejected'),
-        products:
-          productsResult.status === 'fulfilled'
-            ? (productsResult.value.products || [])
-            : [],
-        orders:
-          ordersResult.status === 'fulfilled'
-            ? (ordersResult.value.orders || [])
-            : [],
-        customers:
-          customersResult.status === 'fulfilled'
-            ? (customersResult.value.customers || [])
-            : [],
-        settings:
-          settingsResult.status === 'fulfilled'
-            ? (settingsResult.value.settings || null)
-            : null,
-        errors: results
-          .map((result, i) =>
-            result.status === 'rejected'
-              ? {
-                  resource: ['products', 'orders', 'customers', 'settings'][i],
-                  error: result.reason?.message || 'Falha na leitura.'
-                }
-              : null
-          )
-          .filter(Boolean)
-      };
-    }
-
-    if (Array.isArray(sync.products)) {
-      state.products = sync.products;
-    }
-
-    if (Array.isArray(sync.orders)) {
-      state.orders = sync.orders;
-    }
-
-    if (Array.isArray(sync.customers)) {
-      state.customers = sync.customers;
-    }
-
-    if (sync.settings) {
-      state.settings = {
-        ...DEFAULT_APPEARANCE,
-        ...sync.settings
-      };
-      state.draft = clone(state.settings);
-    }
-
-    renderAll();
-    lastSuccessfulSync = Date.now();
-
-    if (status) {
-      if (sync.partial) {
-        status.textContent = '● Conectado';
-        status.title =
-          (sync.errors || [])
-            .map(e => `${e.resource}: ${e.error}`)
-            .join(' | ') ||
-          'Sincronização parcial.';
-      } else {
-        status.textContent = '● Sincronizado';
-        status.title = 'ADM conectado à loja.';
-      }
-    }
+    await api('/api/store?resource=health');
+    await loadAll();
   } catch (error) {
-    console.error('SAPUCAIA ADMIN CONNECTION:', error);
-
-    if (String(error?.message || '').includes('HTTP 401')) {
-      showLogin();
-      return;
-    }
-
+    console.error('SAPUCAIA CONNECTION:', error);
+    const status = $('#adminStatus');
     if (status) {
-      status.textContent =
-        lastSuccessfulSync
-          ? '● Conexão instável'
-          : '● Loja offline';
-      status.title =
-        error?.message ||
-        'Não foi possível comunicar com o servidor.';
+      status.textContent = '● Loja offline';
+      status.title = error?.message || 'Falha na conexão.';
     }
   } finally {
     syncInFlight = false;
