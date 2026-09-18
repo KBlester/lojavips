@@ -1,4 +1,4 @@
-mport crypto from 'node:crypto';
+Import crypto from 'node:crypto';
 
 const DEFAULT_CLIENT_ID = '1548916664895144046';
 
