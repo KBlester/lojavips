@@ -178,7 +178,7 @@ export default async (req) => {
           client_secret: clientSecret,
           grant_type: 'authorization_code',
           code,
-          redirect_uri: REDIRECT_URI
+          redirect_uri: redirectUri
         }).toString()
       }
     );
