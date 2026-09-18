@@ -2744,17 +2744,29 @@ async function loadStoreCatalog(){
 
   try{
 
-    const r=await fetch(
+    const endpoints=[
       '/api/store?resource=public',
-      {
-        cache:'no-store'
-      }
-    );
+      '/.netlify/functions/store?resource=public'
+    ];
+    let r=null;
+    let lastError=null;
 
-    const d=
-      await r.json().catch(
-        ()=>({})
-      );
+    for(const endpoint of endpoints){
+      try{
+        const candidate=await fetch(endpoint,{cache:'no-store'});
+        if(candidate.ok || (candidate.status!==404 && candidate.status!==405)){
+          r=candidate;
+          break;
+        }
+        lastError=new Error(`HTTP ${candidate.status}`);
+      }catch(error){
+        lastError=error;
+      }
+    }
+
+    if(!r) throw lastError||new Error('Não foi possível conectar com a loja.');
+
+    const d=await r.json().catch(()=>({}));
 
     if(!r.ok){
 
