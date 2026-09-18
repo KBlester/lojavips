@@ -50,15 +50,16 @@ export function signSession(payload) {
 export function readSession(req) {
   const secret = SECRET();
   if (!secret) return null;
+  const authorization = String(req.headers.get('authorization') || '').trim();
+  const bearer = authorization.match(/^Bearer\s+(.+)$/i);
   const raw = req.headers.get('cookie') || '';
 
   const match = raw.match(
     /(?:^|;\s*)sapucaia_session=([^;]+)/
   );
 
-  if (!match) return null;
-
-  const token = decodeURIComponent(match[1]);
+  const token = bearer?.[1] || (match ? decodeURIComponent(match[1]) : '');
+  if (!token) return null;
   const [body, signature] = token.split('.');
 
   if (!body || !signature) return null;
