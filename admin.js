@@ -133,51 +133,105 @@ function toast(message) {
 }
 
 async function api(url, options = {}) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
+  /*
+   * NOVA CAMADA DE COMUNICAÇÃO DO ADM
+   *
+   * O painel não depende mais exclusivamente de /api/*.
+   * Em produção, tenta primeiro a rota nativa da Function e,
+   * se ela não estiver disponível, usa o proxy /api/*.
+   *
+   * Isso evita que uma falha de redirect/rewrite do Netlify
+   * derrube todo o painel.
+   */
+  const isApi = String(url).startsWith('/api/');
+  const functionUrl = isApi
+    ? String(url).replace(/^\/api\//, '/.netlify/functions/')
+    : String(url);
 
-  const request = {
-    credentials: 'same-origin',
-    cache: 'no-store',
-    ...options,
-    signal: controller.signal
-  };
+  const candidates = isApi
+    ? [functionUrl, String(url)]
+    : [String(url)];
 
-  let response;
+  let lastError = null;
 
-  try {
-    response = await fetch(url, request);
-  } catch (error) {
-    if (error?.name === 'AbortError') {
-      throw new Error('Tempo limite ao conectar com o servidor.');
+  for (let index = 0; index < candidates.length; index++) {
+    const target = candidates[index];
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12000);
+
+    try {
+      const response = await fetch(target, {
+        credentials: 'same-origin',
+        cache: 'no-store',
+        ...options,
+        signal: controller.signal
+      });
+
+      const text = await response.text();
+      let data = {};
+
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error(
+          `Servidor respondeu de forma inválida (${response.status}).`
+        );
+      }
+
+      if (!response.ok) {
+        const detail = data.error || data.message || '';
+
+        const error = new Error(
+          detail
+            ? `${detail} (HTTP ${response.status})`
+            : `Erro do servidor (HTTP ${response.status}).`
+        );
+        error.status = response.status;
+
+        /*
+         * GET pode tentar a segunda rota quando a primeira não existe.
+         * POST/DELETE não são repetidos após erro de execução para
+         * nunca duplicar uma gravação.
+         */
+        const canRetry =
+          index < candidates.length - 1 &&
+          [404, 405].includes(response.status);
+
+        if (canRetry) {
+          lastError = error;
+          continue;
+        }
+
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      lastError = error;
+
+      const method = String(options.method || 'GET').toUpperCase();
+      const canRetry =
+        index < candidates.length - 1 &&
+        method === 'GET' &&
+        (!error.status || [404, 405].includes(error.status));
+
+      if (canRetry) continue;
+
+      if (error?.name === 'AbortError') {
+        throw new Error('Tempo limite ao conectar com o servidor.');
+      }
+
+      if (error instanceof TypeError) {
+        throw new Error('Não foi possível conectar com o servidor.');
+      }
+
+      throw error;
+    } finally {
+      clearTimeout(timer);
     }
-    throw new Error('Não foi possível conectar com o servidor.');
-  } finally {
-    clearTimeout(timer);
   }
 
-  const text = await response.text();
-
-  let data = {};
-
-  try {
-    data = text ? JSON.parse(text) : {};
-  } catch {
-    throw new Error(
-      `Servidor respondeu de forma inválida (${response.status}).`
-    );
-  }
-
-  if (!response.ok) {
-    const detail = data.error || data.message || '';
-    throw new Error(
-      detail
-        ? `${detail} (HTTP ${response.status})`
-        : `Erro do servidor (HTTP ${response.status}).`
-    );
-  }
-
-  return data;
+  throw lastError || new Error('Servidor indisponível.');
 }
 
 function showSetup() {
@@ -2559,6 +2613,7 @@ $('#changeCredentials').onclick =
   };
 
 let syncInFlight = false;
+let lastSuccessfulSync = 0;
 
 async function syncAdminNow() {
   if (syncInFlight) return;
@@ -2566,35 +2621,73 @@ async function syncAdminNow() {
 
   syncInFlight = true;
 
-  try {
-    let sync;
+  const status = $('#adminStatus');
 
+  try {
+    let sync = null;
+
+    /*
+     * Caminho principal: uma única leitura.
+     */
     try {
       sync = await api('/api/store?resource=sync');
-    } catch (firstError) {
-      // Compatibilidade com deploys antigos que ainda não possuem
-      // o endpoint agregado de sincronização.
-      if (String(firstError?.message || '').includes('HTTP 404')) {
-        const [products, orders, customers, settings] =
-          await Promise.all([
-            api('/api/store?resource=products'),
-            api('/api/store?resource=orders'),
-            api('/api/store?resource=customers'),
-            api('/api/store?resource=settings-admin')
-          ]);
-
-        sync = {
-          ok: true,
-          connected: true,
-          partial: false,
-          products: products.products || [],
-          orders: orders.orders || [],
-          customers: customers.customers || [],
-          settings: settings.settings || null
-        };
-      } else {
-        throw firstError;
+    } catch (syncError) {
+      /*
+       * Fallback real: se o agregado falhar, cada recurso é
+       * consultado separadamente. Uma falha isolada não derruba
+       * produtos, configurações ou o restante do painel.
+       */
+      if (String(syncError?.message || '').includes('HTTP 401')) {
+        throw syncError;
       }
+
+      const results = await Promise.allSettled([
+        api('/api/store?resource=products'),
+        api('/api/store?resource=orders'),
+        api('/api/store?resource=customers'),
+        api('/api/store?resource=settings-admin')
+      ]);
+
+      const [productsResult, ordersResult, customersResult, settingsResult] = results;
+
+      const usable =
+        results.some(result => result.status === 'fulfilled');
+
+      if (!usable) {
+        throw syncError;
+      }
+
+      sync = {
+        ok: true,
+        connected: true,
+        partial: results.some(result => result.status === 'rejected'),
+        products:
+          productsResult.status === 'fulfilled'
+            ? (productsResult.value.products || [])
+            : [],
+        orders:
+          ordersResult.status === 'fulfilled'
+            ? (ordersResult.value.orders || [])
+            : [],
+        customers:
+          customersResult.status === 'fulfilled'
+            ? (customersResult.value.customers || [])
+            : [],
+        settings:
+          settingsResult.status === 'fulfilled'
+            ? (settingsResult.value.settings || null)
+            : null,
+        errors: results
+          .map((result, i) =>
+            result.status === 'rejected'
+              ? {
+                  resource: ['products', 'orders', 'customers', 'settings'][i],
+                  error: result.reason?.message || 'Falha na leitura.'
+                }
+              : null
+          )
+          .filter(Boolean)
+      };
     }
 
     if (Array.isArray(sync.products)) {
@@ -2614,34 +2707,41 @@ async function syncAdminNow() {
         ...DEFAULT_APPEARANCE,
         ...sync.settings
       };
+      state.draft = clone(state.settings);
     }
 
     renderAll();
+    lastSuccessfulSync = Date.now();
 
-    const status = $('#adminStatus');
     if (status) {
-      if (sync.connected && sync.partial) {
-        status.textContent =
-          '● Conectado (sincronização parcial)';
-        status.title = Array.isArray(sync.errors)
-          ? sync.errors.map(e => `${e.resource}: ${e.error}`).join(' | ')
-          : '';
+      if (sync.partial) {
+        status.textContent = '● Conectado';
+        status.title =
+          (sync.errors || [])
+            .map(e => `${e.resource}: ${e.error}`)
+            .join(' | ') ||
+          'Sincronização parcial.';
       } else {
         status.textContent = '● Sincronizado';
-        status.title = '';
+        status.title = 'ADM conectado à loja.';
       }
     }
   } catch (error) {
-    console.error('SAPUCAIA SYNC:', error);
+    console.error('SAPUCAIA ADMIN CONNECTION:', error);
 
     if (String(error?.message || '').includes('HTTP 401')) {
       showLogin();
+      return;
     }
 
-    const status = $('#adminStatus');
     if (status) {
-      status.textContent = '● Erro de conexão com o servidor';
-      status.title = error?.message || 'Falha ao sincronizar.';
+      status.textContent =
+        lastSuccessfulSync
+          ? '● Conexão instável'
+          : '● Loja offline';
+      status.title =
+        error?.message ||
+        'Não foi possível comunicar com o servidor.';
     }
   } finally {
     syncInFlight = false;
