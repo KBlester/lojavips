@@ -3,10 +3,13 @@ import * as crypto from 'node:crypto';
 const DEFAULT_CLIENT_ID = '1548916664895144046';
 
 function getDiscordConfig(req) {
-  const clientId = String(process.env.DISCORD_CLIENT_ID || DEFAULT_CLIENT_ID).trim();
-  const configuredRedirect = String(process.env.DISCORD_REDIRECT_URI || '').trim();
-  const origin = new URL(req.url).origin;
-  const redirectUri = configuredRedirect || 'https://sapucaia-rj-lojaa-ofical.netlify.app/api/discord-callback';
+  const clientId = String(
+    process.env.DISCORD_CLIENT_ID || DEFAULT_CLIENT_ID
+  ).trim();
+
+  const redirectUri =
+    'https://sapucaia-rj-lojaa-ofical.netlify.app/api/discord-callback';
+
   return { clientId, redirectUri };
 }
 
