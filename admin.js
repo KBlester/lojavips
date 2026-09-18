@@ -1153,6 +1153,12 @@ $('#closeProduct')?.addEventListener(
   closeProductModal
 );
 
+// Abre o editor de novo produto pelo botão do catálogo.
+$('#addProductBtn')?.addEventListener(
+  'click',
+  () => openProduct()
+);
+
 $('#productModal')?.addEventListener(
   'click',
   (event) => {
