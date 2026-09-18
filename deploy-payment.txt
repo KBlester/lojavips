@@ -1,0 +1,15 @@
+SAPUCAIA V2 — PAGAMENTO
+
+Arquivos novos de pagamento:
+netlify/functions/checkout.mjs
+netlify/functions/payment-status.mjs
+netlify/functions/webhook-mercadopago.mjs
+netlify/functions/webhook-infinitepay.mjs
+netlify/functions/discord-start.mjs
+netlify/functions/discord-callback.mjs
+netlify/functions/discord-session.mjs
+netlify/functions/_payment-lib.mjs
+
+Antes de usar pagamento real, configure no Netlify as variáveis indicadas em PAYMENT-CONFIG.md.
+
+Não coloque MP_ACCESS_TOKEN, DISCORD_CLIENT_SECRET, FIVEM_WEBHOOK_SECRET ou RESEND_API_KEY no HTML/JavaScript público.

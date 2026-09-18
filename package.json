@@ -1,0 +1,9 @@
+{
+  "name": "sapucaia-loja-v2-payment",
+  "version": "2.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@netlify/blobs": "^11.0.3"
+  }
+}

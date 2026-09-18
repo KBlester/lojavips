@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="theme-color" content="#ff087f">
+  <title>SAPUCAIA • Painel ADM</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="glow glow-a"></div>
+  <div class="glow glow-b"></div>
+
+  <div id="setupScreen" class="login-screen hidden">
+    <div class="login-box">
+      <div class="admin-logo">♛</div>
+      <p class="eyebrow">PRIMEIRO ACESSO • SAPUCAIA</p>
+      <h1>CRIAR <span>ADM</span></h1>
+      <p class="muted">Defina o usuário e a senha do painel.</p>
+      <label>Usuário<input id="setupUser" autocomplete="username"></label>
+      <label>Senha<input id="setupPass" type="password" autocomplete="new-password"></label>
+      <label>Confirmar senha<input id="setupConfirm" type="password" autocomplete="new-password"></label>
+      <button id="setupBtn" class="pink-btn">Criar acesso</button>
+    </div>
+  </div>
+
+  <div id="loginScreen" class="login-screen hidden">
+    <div class="login-box">
+      <div class="admin-logo">♛</div>
+      <p class="eyebrow">SAPUCAIA • RIO DE JANEIRO</p>
+      <h1>PAINEL <span>ADM</span></h1>
+      <p class="muted">Acesso administrativo seguro.</p>
+      <label>Usuário<input id="loginUser" autocomplete="username"></label>
+      <label>Senha<input id="loginPass" type="password" autocomplete="current-password"></label>
+      <button id="loginBtn" class="pink-btn">Entrar no painel</button>
+    </div>
+  </div>
+
+  <div id="app" class="app hidden">
+    <aside class="sidebar">
+      <div class="side-brand"><span>♛</span><div><b>SAPUCAIA</b><small>PAINEL ADMINISTRATIVO</small></div></div>
+      <button class="side-link active" data-page="dashboard">▦ <span>Dashboard</span></button>
+      <button class="side-link" data-page="products">▣ <span>Produtos</span></button>
+      <button class="side-link" data-page="appearance">◈ <span>Editor visual</span></button>
+      <button class="side-link" data-page="orders">▤ <span>Pedidos</span></button>
+      <button class="side-link" data-page="customers">♙ <span>Clientes</span></button>
+      <button class="side-link" data-page="coupons">% <span>Cupons</span></button>
+      <button class="side-link" data-page="payments">¤ <span>Pagamentos</span></button>
+      <button class="side-link" data-page="delivery">⚡ <span>Entrega FiveM</span></button>
+      <button class="side-link" data-page="discord">◉ <span>Discord</span></button>
+      <button class="side-link" data-page="support">? <span>Suporte & FAQ</span></button>
+      <button class="side-link" data-page="security">⌾ <span>Segurança</span></button>
+      <a class="store-link" href="index.html" target="_blank" rel="noopener">↗ Abrir loja</a>
+      <button id="logoutBtn" class="logout">⇥ Sair</button>
+    </aside>
+
+    <main class="main">
+      <header class="admin-top">
+        <div><p class="eyebrow">CONTROLE DA LOJA</p><h2 id="pageTitle">Dashboard</h2></div>
+        <div class="top-right"><span id="adminStatus">● Administrador</span><button id="mobileMenu">☰</button></div>
+      </header>
+
+      <section id="dashboard" class="page active-page">
+        <div class="stats">
+          <div class="stat"><span>PRODUTOS</span><strong id="statProducts">0</strong><em>Produtos cadastrados</em></div>
+          <div class="stat"><span>PEDIDOS</span><strong id="statOrders">0</strong><em>Registrados</em></div>
+          <div class="stat"><span>FATURAMENTO</span><strong id="statRevenue">R$ 0,00</strong><em>Pedidos não cancelados</em></div>
+          <div class="stat"><span>CLIENTES</span><strong id="statCustomers">0</strong><em>Identificados</em></div>
+        </div>
+        <div class="dash-grid">
+          <div class="panel"><div class="panel-head"><div><p class="eyebrow">VENDAS</p><h3>Pedidos recentes</h3></div><button class="ghost" data-goto="orders">Ver pedidos →</button></div><div id="recentOrders" class="table-wrap"></div></div>
+          <div class="panel"><div class="panel-head"><div><p class="eyebrow">CATÁLOGO</p><h3>Resumo por categoria</h3></div></div><div id="categorySummary"></div></div>
+        </div>
+      </section>
+
+      <section id="products" class="page">
+        <div class="toolbar"><div><p class="eyebrow">CATÁLOGO</p><h3>Gerenciar produtos</h3><small>Cadastre e publique os produtos da loja.</small></div><button id="addProductBtn" class="pink-btn">+ Novo produto</button></div>
+        <div class="panel"><div class="filters"><input id="productSearch" placeholder="Buscar produto..."><select id="productCat"><option value="">Todas as categorias</option><option>Destaques</option><option>Edição Limitada</option><option>Planos VIP</option><option>Carros VIPS/LUXOS</option><option>Especiais</option><option>Caminhões</option><option>Aeronaves</option><option>Extras</option><option>Dinheiro</option><option>Orgs</option><option>Casas</option><option>Punições</option></select></div><div id="productTable" class="table-wrap"></div></div>
+      </section>
+
+      <section id="appearance" class="page">
+        <div class="toolbar appearance-toolbar"><div><p class="eyebrow">EDITOR VISUAL</p><h3>Editor completo da loja</h3><small>Altere, visualize e só publique quando estiver satisfeito.</small></div><div class="toolbar-actions"><button id="undoAppearance" class="icon-btn" title="Voltar uma alteração">↶</button><button id="redoAppearance" class="icon-btn" title="Avançar uma alteração">↷</button><button id="exitFocus" class="ghost">Sair do foco</button><button id="resetPreview" class="ghost">Descartar edição</button><button id="resetDefaults" class="danger-btn">Restaurar padrão</button><button id="saveAppearance" class="pink-btn">Publicar alterações</button></div></div>
+        <div class="editor-layout"><div class="editor-panel">
+          <div class="editor-tabs"><button class="editor-tab active" data-editor="brand">◈ Marca</button><button class="editor-tab" data-editor="colors">🎨 Cores</button><button class="editor-tab" data-editor="banner">🖼️ Banner</button><button class="editor-tab" data-editor="background">🌌 Fundo</button><button class="editor-tab" data-editor="buttons">🔘 Botões</button><button class="editor-tab" data-editor="typography">✍️ Fontes</button><button class="editor-tab" data-editor="cards">▣ Cards</button><button class="editor-tab" data-editor="marquee">📢 Letreiro</button><button class="editor-tab" data-editor="layout">⌗ Layout</button><button class="editor-tab" data-editor="effects">✦ Efeitos</button></div>
+          <div id="editor-brand" class="editor-section active"><div class="section-title"><b>Marca e textos principais</b><span>Edite o nome, cidade e chamadas que aparecem na loja.</span></div><div class="two-col"><label>Nome da loja<input id="shopNameInput" placeholder="SAPUCAIA"></label><label>Cidade/subtítulo<input id="cityInput" placeholder="RIO DE JANEIRO"></label><label>Texto do hero<input id="heroTitleInput" placeholder="SAPUCAIA"></label><label>Subtítulo do hero<input id="heroSubtitleInput" placeholder="RIO DE JANEIRO"></label><label>Texto do botão hero<input id="heroButtonTextInput" placeholder="Ver produtos"></label><label>Destino do botão hero<input id="heroButtonUrlInput" placeholder="#categorias"></label></div><button class="focus-btn" data-focus="brand">🔍 Focar elemento: Marca</button></div>
+          <div id="editor-colors" class="editor-section"><div class="section-title"><b>Cores completas</b><span>Use HEX como no Discord.</span></div><div class="two-col"><label>Cor primária<div class="color-row"><input id="colorPrimary" type="color"><input id="colorPrimaryHex" maxlength="7"></div></label><label>Cor secundária<div class="color-row"><input id="colorSecondary" type="color"><input id="colorSecondaryHex" maxlength="7"></div></label><label>Fundo<div class="color-row"><input id="colorBackground" type="color"><input id="colorBackgroundHex" maxlength="7"></div></label><label>Superfícies<div class="color-row"><input id="colorSurface" type="color"><input id="colorSurfaceHex" maxlength="7"></div></label><label>Texto<div class="color-row"><input id="colorText" type="color"><input id="colorTextHex" maxlength="7"></div></label><label>Texto secundário<div class="color-row"><input id="colorMuted" type="color"><input id="colorMutedHex" maxlength="7"></div></label><label>Cor dos botões<div class="color-row"><input id="colorButton" type="color"><input id="colorButtonHex" maxlength="7"></div></label><label>Cor dos botões (hover)<div class="color-row"><input id="colorButtonHover" type="color"><input id="colorButtonHoverHex" maxlength="7"></div></label><label>Cor das bordas<div class="color-row"><input id="colorBorder" type="color"><input id="colorBorderHex" maxlength="7"></div></label><label>Cor do preço<div class="color-row"><input id="colorPrice" type="color"><input id="colorPriceHex" maxlength="7"></div></label></div><button class="focus-btn" data-focus="brand">🔍 Focar elemento: Identidade</button></div>
+          <div id="editor-banner" class="editor-section"><div class="section-title"><b>Banner</b><span>Importe ou cole uma URL.</span></div><label>Imagem/GIF por URL<input id="bannerUrl" placeholder="https://..."></label><label>Importar banner<input id="bannerFile" type="file" accept="image/*"></label><div class="two-col"><label>Modo do banner<select id="bannerFit"><option value="fill">Esticar para preencher</option><option value="contain">Inteiro com bordas</option></select></label><label>Efeito<select id="bannerEffect"><option value="none">Nenhum</option><option value="glow">Glow neon</option><option value="glow-scan">Glow + Scanline</option><option value="shine">Reflexo passando</option><option value="pulse">Glow pulsante</option><option value="glitch">Glitch sutil</option><option value="float">Flutuação suave</option></select></label><label>Intensidade<input id="bannerIntensity" type="range" min="0" max="100"><output id="bannerIntensityOut"></output></label><label>Velocidade<input id="bannerSpeed" type="range" min="0.2" max="3" step="0.1"><output id="bannerSpeedOut"></output></label><label>Raio<input id="bannerRadius" type="range" min="0" max="36"><output id="bannerRadiusOut"></output></label><label>Altura do quadro<input id="bannerHeight" type="range" min="180" max="680"><output id="bannerHeightOut"></output></label></div><button class="focus-btn" data-focus="banner">🔍 Focar elemento: Banner</button></div>
+          <div id="editor-background" class="editor-section"><div class="section-title"><b>Fundo e atmosfera</b><span>Wallpaper, GIF, opacidade e camadas ambientais.</span></div><label>Imagem/GIF do fundo por URL<input id="backgroundUrl" placeholder="https://..."></label><label>Importar fundo<input id="backgroundFile" type="file" accept="image/*"></label><div class="two-col"><label>Modo<select id="backgroundSize"><option value="cover">Cobrir</option><option value="contain">Inteiro</option><option value="auto">Natural</option></select></label><label>Opacidade<input id="backgroundOpacity" type="range" min="0" max="100"><output id="backgroundOpacityOut"></output></label><label>Desfoque<input id="backgroundBlur" type="range" min="0" max="18"><output id="backgroundBlurOut"></output></label><label>Escurecimento<input id="backgroundDarkness" type="range" min="0" max="80"><output id="backgroundDarknessOut"></output></label></div><button class="focus-btn" data-focus="background">🔍 Focar elemento: Fundo</button></div>
+          <div id="editor-buttons" class="editor-section"><div class="section-title"><b>Botões</b><span>Controle formato, tamanho, borda, brilho, sombra e animação.</span></div><div class="two-col"><label>Formato<select id="buttonStyle"><option value="square">Quadrado</option><option value="rounded">Arredondado</option><option value="pill">Pílula</option></select></label><label>Raio<input id="buttonRadius" type="range" min="0" max="36"><output id="buttonRadiusOut"></output></label><label>Altura<input id="buttonHeight" type="range" min="32" max="64"><output id="buttonHeightOut"></output></label><label>Escala ao passar mouse<input id="buttonHoverScale" type="range" min="100" max="110"><output id="buttonHoverScaleOut"></output></label><label>Glow<select id="buttonGlow"><option value="true">Ativo</option><option value="false">Desativado</option></select></label><label>Sombra<select id="buttonShadow"><option value="true">Ativa</option><option value="false">Desativada</option></select></label><label>Borda<select id="buttonBorder"><option value="true">Ativa</option><option value="false">Desativada</option></select></label><label>Animação<select id="buttonAnimation"><option value="none">Nenhuma</option><option value="shine">Brilho passando</option><option value="pulse">Pulso</option><option value="lift">Elevação</option></select></label></div><button class="focus-btn" data-focus="button">🔍 Focar elemento: Botão</button></div>
+          <div id="editor-typography" class="editor-section"><div class="section-title"><b>Tipografia</b><span>Escolha fonte, tamanho, peso e espaçamento.</span></div><div class="two-col"><label>Fonte dos títulos<select id="headingFont"><option>Arial</option><option>Inter</option><option>Trebuchet MS</option><option>Georgia</option><option>Verdana</option><option>Courier New</option></select></label><label>Fonte do texto<select id="bodyFont"><option>Arial</option><option>Inter</option><option>Trebuchet MS</option><option>Georgia</option><option>Verdana</option><option>Courier New</option></select></label><label>Fonte dos botões<select id="buttonFont"><option>Arial</option><option>Inter</option><option>Trebuchet MS</option><option>Verdana</option><option>Courier New</option></select></label><label>Peso dos títulos<select id="headingWeight"><option>600</option><option>700</option><option>800</option><option>900</option></select></label><label>Tamanho dos títulos<input id="headingSize" type="range" min="20" max="64"><output id="headingSizeOut"></output></label><label>Tamanho do texto<input id="bodySize" type="range" min="11" max="20"><output id="bodySizeOut"></output></label><label>Tamanho dos botões<input id="buttonFontSize" type="range" min="10" max="18"><output id="buttonFontSizeOut"></output></label><label>Espaçamento das letras<input id="letterSpacing" type="range" min="0" max="8" step="0.5"><output id="letterSpacingOut"></output></label></div><button class="focus-btn" data-focus="title">🔍 Focar elemento: Título</button></div>
+          <div id="editor-cards" class="editor-section"><div class="section-title"><b>Cards de produto</b><span>Controle acabamento, bordas, brilho e informações.</span></div><div class="two-col"><label>Raio do card<input id="cardRadius" type="range" min="0" max="36"><output id="cardRadiusOut"></output></label><label>Glow<select id="cardGlow"><option value="true">Ativo</option><option value="false">Desativado</option></select></label><label>Borda<select id="cardBorder"><option value="true">Ativa</option><option value="false">Desativada</option></select></label><label>Elevação hover<input id="cardLift" type="range" min="0" max="18"><output id="cardLiftOut"></output></label><label>Espaço interno<input id="cardPadding" type="range" min="10" max="30"><output id="cardPaddingOut"></output></label><label>Altura das imagens<input id="cardImageHeight" type="range" min="120" max="300"><output id="cardImageHeightOut"></output></label></div><button class="focus-btn" data-focus="card">🔍 Focar elemento: Card</button></div>
+          <div id="editor-marquee" class="editor-section"><div class="section-title"><b>Letreiro realmente infinito</b><span>Uma frase se repete imediatamente atrás da outra.</span></div><label>Frase do letreiro<input id="marqueeTextInput" placeholder="SAPUCAIA50 50% EM TODOS OS PRODUTOS"></label><div class="two-col"><label>Velocidade<input id="marqueeSpeed" type="range" min="10" max="60"><output id="marqueeSpeedOut"></output></label><label>Glow<select id="marqueeGlow"><option value="true">Ativo</option><option value="false">Desativado</option></select></label><label>Tamanho<input id="marqueeSize" type="range" min="10" max="22"><output id="marqueeSizeOut"></output></label><label>Espaçamento<input id="marqueeGap" type="range" min="0" max="100"><output id="marqueeGapOut"></output></label></div><button class="focus-btn" data-focus="marquee">🔍 Focar elemento: Letreiro</button></div>
+          <div id="editor-layout" class="editor-section"><div class="section-title"><b>Layout</b><span>Controle largura, espaço e densidade da loja.</span></div><div class="two-col"><label>Largura máxima<input id="contentMaxWidth" type="range" min="1000" max="1800"><output id="contentMaxWidthOut"></output></label><label>Espaço entre seções<input id="sectionGap" type="range" min="8" max="50"><output id="sectionGapOut"></output></label><label>Colunas de produtos<select id="productColumns"><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label><label>Arredondamento geral<input id="globalRadius" type="range" min="0" max="36"><output id="globalRadiusOut"></output></label></div><button class="focus-btn" data-focus="title">🔍 Focar elemento: Layout</button></div>
+          <div id="editor-effects" class="editor-section"><div class="section-title"><b>Efeitos globais</b><span>Ative/desative efeitos sem tocar no código.</span></div><div class="check-grid"><label class="switch-row"><input id="fxParticles" type="checkbox"><span>Partículas</span></label><label class="switch-row"><input id="fxStars" type="checkbox"><span>Estrelas</span></label><label class="switch-row"><input id="fxGrid" type="checkbox"><span>Grade</span></label><label class="switch-row"><input id="fxNoise" type="checkbox"><span>Ruído</span></label><label class="switch-row"><input id="fxCursorGlow" type="checkbox"><span>Glow do cursor</span></label><label class="switch-row"><input id="reducedMotion" type="checkbox"><span>Reduzir movimento</span></label></div><div class="two-col"><label>Intensidade dos efeitos<input id="effectsIntensity" type="range" min="0" max="100"><output id="effectsIntensityOut"></output></label><label>Vinheta<input id="vignette" type="range" min="0" max="100"><output id="vignetteOut"></output></label></div></div>
+        </div><div class="preview-panel"><div class="preview-head"><div><b>PRÉVIA AO VIVO</b><span id="previewStatus">Sincronizando...</span></div><div class="preview-actions"><button id="previewDesktop" class="view-btn active">💻 Desktop</button><button id="previewMobile" class="view-btn">📱 Celular</button></div></div><div class="preview-wrap" id="previewWrap"><iframe id="storePreview" src="index.html?preview=1&v=editor" title="Prévia da loja" loading="eager"></iframe></div><div class="preview-footer"><span>As mudanças de edição são locais até você clicar em publicar.</span><button id="clearFocus" class="ghost">Sair do foco</button></div></div></div>
+      </section>
+
+      <section id="orders" class="page"><div class="toolbar"><div><p class="eyebrow">VENDAS</p><h3>Pedidos</h3></div></div><div class="panel"><div class="filters"><select id="orderStatusFilter"><option value="">Todos os status</option><option>Aguardando pagamento</option><option>Pago</option><option>Entregue</option><option>Cancelado</option></select></div><div id="orderTable" class="table-wrap"></div></div></section>
+      <section id="customers" class="page"><div class="toolbar"><div><p class="eyebrow">CLIENTES</p><h3>Clientes</h3></div></div><div class="panel"><div id="customerTable" class="table-wrap"></div></div></section>
+      <section id="coupons" class="page"><div class="toolbar"><div><p class="eyebrow">PROMOÇÕES</p><h3>Cupons</h3></div><button id="saveCoupon" class="pink-btn">Salvar cupom</button></div><div class="panel form-panel"><label>Código do cupom<input id="couponCodeAdmin"></label><label>Desconto (%)<input id="couponPercentAdmin" type="number" min="0" max="100"></label><div class="coupon-preview"><span id="couponHeadline">50% OFF EM TODOS OS PRODUTOS</span><b id="couponPreview">SAPUCAIA50</b></div><small class="muted">O backend valida o cupom.</small></div></section>
+      <section id="payments" class="page"><div class="toolbar"><div><p class="eyebrow">PAGAMENTOS</p><h3>Gateway e Pix</h3><small>Credenciais secretas continuam protegidas no servidor.</small></div><button id="savePayment" class="pink-btn">Salvar pagamentos</button></div><div class="panel form-panel"><label>Gateway principal<select id="paymentProvider"><option value="mercadopago">Mercado Pago</option><option value="infinitepay">InfinitePay</option></select></label><label>Pix ativo<select id="pixEnabled"><option value="true">Sim</option><option value="false">Não</option></select></label><label>InfinitePay ativa<select id="infinitePayEnabled"><option value="true">Sim</option><option value="false">Não</option></select></label><label>Handle InfinitePay<input id="infinitePayHandle"></label><div class="notice">O token do Mercado Pago e segredos de webhook ficam somente no Netlify.</div></div></section>
+      <section id="delivery" class="page"><div class="toolbar"><div><p class="eyebrow">AUTOMAÇÃO</p><h3>Entrega FiveM</h3><small>O Passaporte representa somente o destinatário.</small></div><button id="saveDelivery" class="pink-btn">Salvar entrega</button></div><div class="panel form-panel"><label>Nome do servidor<input id="fivemServerName"></label><label>Webhook FiveM<input id="fivemWebhookUrl" placeholder="https://..."></label><div class="notice">O pedido usa <code>recipientId</code> para determinar quem recebe o produto.</div></div></section>
+      <section id="discord" class="page"><div class="toolbar"><div><p class="eyebrow">INTEGRAÇÃO</p><h3>Discord OAuth</h3></div><button id="saveDiscord" class="pink-btn">Salvar Discord</button></div><div class="panel form-panel"><label>Client ID<input id="discordClientId"></label><label>Redirect URI<input id="discordRedirectUri"></label><label>Scopes<input id="discordScopes" value="identify email"></label><div class="notice">O <code>DISCORD_CLIENT_SECRET</code> fica somente no ambiente do Netlify.</div></div></section>
+      <section id="support" class="page"><div class="toolbar"><div><p class="eyebrow">ATENDIMENTO</p><h3>Suporte & FAQ</h3></div><button id="saveSupport" class="pink-btn">Salvar suporte</button></div><div class="panel form-panel"><label>Link do Discord<input id="supportDiscordUrl"></label><label>Link do suporte<input id="supportUrl"></label><label>E-mail<input id="supportEmail"></label><label class="full">FAQ da loja<textarea id="faqJson" rows="12"></textarea></label><label class="full">Termos de Uso (centralizado)<input id="termsUrl" value="terms.html" readonly></label></div></section>
+      <section id="security" class="page"><div class="toolbar"><div><p class="eyebrow">SEGURANÇA</p><h3>Credenciais do ADM</h3><small>A alteração só é possível autenticado.</small></div></div><div class="panel form-panel"><label>Usuário<input id="securityUser"></label><label>Senha atual<input id="securityCurrent" type="password"></label><label>Nova senha<input id="securityNew" type="password"></label><label>Confirmar nova senha<input id="securityConfirm" type="password"></label><button id="changeCredentials" class="pink-btn">Alterar credenciais</button></div></section>
+    </main>
+  </div>
+
+  <div id="productModal" class="modal-backdrop">
+    <div class="modal product-editor-modal product-editor-modal-pro">
+      <button class="close" id="closeProduct">×</button>
+      <div class="modal-heading"><p class="eyebrow">CATÁLOGO</p><h3 id="modalTitle">Novo produto</h3><span>Cadastre somente as informações deste produto.</span></div>
+      <div class="product-editor-layout">
+        <div class="product-form-column">
+          <div class="form-grid">
+            <label>Nome<input id="fName" placeholder="Nome do produto"></label>
+            <label>Categoria<select id="fCat"><option value="Destaques">Destaques</option><option value="Edição Limitada">Edição Limitada</option><option value="Planos VIP">Planos VIP</option><option value="Carros VIPS/LUXOS">Carros VIPS/LUXOS</option><option value="Especiais">Especiais</option><option value="Caminhões">Caminhões</option><option value="Aeronaves">Aeronaves</option><option value="Extras">Extras</option><option value="Dinheiro">Dinheiro</option><option value="Orgs">Orgs</option><option value="Casas">Casas</option><option value="Punições">Punições</option></select></label>
+            <label>Preço normal<input id="fPrice" type="number" min="0" step="0.01"></label>
+            <label>Preço promocional<input id="fPromoPrice" type="number" min="0" step="0.01" placeholder="Opcional"></label>
+            <label>Produto em destaque<select id="fFeatured"><option value="false">Não</option><option value="true">Sim</option></select></label>
+            <label>Produto ativo<select id="fActive"><option value="true">Sim</option><option value="false">Não</option></select></label>
+            <div class="image-field full"><label>Imagem de capa — URL<input id="fMainUrl" placeholder="https://..."></label><label>Imagem de capa — importar<input id="fMainFile" type="file" accept="image/*"><small id="mainUploadStatus">Nenhuma nova imagem escolhida.</small></label></div>
+            <div class="image-field full"><label>Imagem da descrição 1 — URL<input id="fDescImage1Url" placeholder="https://..."></label><label>Imagem da descrição 1 — importar<input id="fDescImage1File" type="file" accept="image/*"><small id="descImage1Status">Nenhuma nova imagem escolhida.</small></label></div>
+            <div class="image-field full"><label>Imagem da descrição 2 — URL<input id="fDescImage2Url" placeholder="https://..."></label><label>Imagem da descrição 2 — importar<input id="fDescImage2File" type="file" accept="image/*"><small id="descImage2Status">Nenhuma nova imagem escolhida.</small></label></div>
+            <label class="full">Descrição<textarea id="fDesc" rows="7" placeholder="Descrição do produto..."></textarea></label>
+            <label class="full">Dúvidas frequentes<textarea id="fFaq" rows="7" placeholder="Pergunta: resposta&#10;Pergunta: resposta"></textarea></label>
+            <div class="full delivery-editor-block">
+              <div class="section-mini-head"><div><span class="eyebrow">ENTREGA</span><h4>Itens inclusos no produto</h4></div><button type="button" id="addDeliveryItem" class="ghost small">+ Adicionar código</button></div>
+              <div id="deliveryItemsEditor" class="delivery-items-editor"></div>
+            </div>
+          </div>
+          <div class="product-actions"><button id="saveProductDraft" class="ghost">Salvar rascunho</button><button id="saveProduct" class="pink-btn wide">Publicar produto</button></div>
+        </div>
+        <aside class="product-live-preview-panel">
+          <div class="product-live-preview-head"><div><p class="eyebrow">PRÉVIA DO PRODUTO</p><h4>Visual em tempo real</h4></div><span>ADM</span></div>
+          <div id="productLivePreview" class="product-live-preview"></div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="admin.js"></script>
+</body>
+</html>

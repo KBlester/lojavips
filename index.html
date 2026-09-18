@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="theme-color" content="#ff087f">
+  <meta name="description" content="SAPUCAIA — Loja Oficial do servidor FiveM Rio de Janeiro.">
+  <title>SAPUCAIA • Loja Oficial</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="noise"></div>
+  <div class="bg-grid"></div>
+  <div class="pink-orb orb-a"></div>
+  <div class="pink-orb orb-b"></div>
+  <div id="particles"></div>
+
+  <header class="topbar">
+    <a class="brand" href="#inicio" aria-label="SAPUCAIA início">
+      <span class="brand-crown">♛</span>
+      <span>
+        <strong data-theme-shop-name>SAPUCAIA</strong>
+        <small data-theme-city>RIO DE JANEIRO</small>
+      </span>
+    </a>
+
+    <nav class="main-nav">
+      <button data-scroll="#inicio" class="nav-link active">⌂ <span>Início</span></button>
+      <button data-scroll="#suporte" class="nav-link">◉ <span>Suporte</span></button>
+      <button data-scroll="#pedidos" class="nav-link">▤ <span>Meus Pedidos</span></button>
+    </nav>
+
+    <div class="top-actions">
+      <button id="cartOpen" class="icon-btn" aria-label="Abrir carrinho">
+        🛒<b id="cartCount">0</b>
+      </button>
+      <button id="discordLogin" class="primary-btn discord">◉ Entrar com Discord</button>
+    </div>
+  </header>
+
+  <main id="inicio">
+    <section class="hero-wrap">
+      <div class="hero-banner">
+        <img src="assets/banner-sapucaia.png" alt="Banner SAPUCAIA">
+        <div class="hero-shine"></div></div>
+    </section>
+
+    <section class="infinite-marquee" aria-label="Promoção">
+      <div class="marquee-track">
+        <div class="marquee-group" data-marquee-group="0"></div>
+        <div class="marquee-group" data-marquee-group="1" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <section class="coupon-strip">
+      <div>
+        <span class="coupon-icon">%</span>
+        <div>
+          <strong id="promoHeadline">50% OFF EM TODOS OS PRODUTOS</strong>
+          <small>Use o cupom e aproveite a promoção da SAPUCAIA.</small>
+        </div>
+      </div>
+      <button id="copyCoupon" class="coupon-code">SAPUCAIA50 <span>⧉</span></button>
+    </section>
+
+    <section class="categories" aria-label="Categorias">
+      <button class="cat " data-category="Novidades"><span class="cat-icon">🆕</span><span>Novidades</span></button>
+      <button class="cat active" data-category="Destaques"><span class="cat-icon">⭐</span><span>Destaques</span></button>
+      <button class="cat " data-category="Edição Limitada"><span class="cat-icon">🔥</span><span>Edição Limitada</span></button>
+      <button class="cat " data-category="Planos VIP"><span class="cat-icon">💎</span><span>Planos VIP</span></button>
+      <button class="cat " data-category="Carros VIPS/LUXOS"><span class="cat-icon">🚗</span><span>Carros VIPS/LUXOS</span></button>
+      <button class="cat " data-category="Especiais"><span class="cat-icon">✨</span><span>Especiais</span></button>
+      <button class="cat " data-category="Caminhões"><span class="cat-icon">🚛</span><span>Caminhões</span></button>
+      <button class="cat " data-category="Aeronaves"><span class="cat-icon">✈️</span><span>Aeronaves</span></button>
+      <button class="cat " data-category="Extras"><span class="cat-icon">🎁</span><span>Extras</span></button>
+      <button class="cat " data-category="Dinheiro"><span class="cat-icon">💰</span><span>Dinheiro</span></button>
+      <button class="cat " data-category="Orgs"><span class="cat-icon">🏢</span><span>Orgs</span></button>
+      <button class="cat " data-category="Casas"><span class="cat-icon">🏠</span><span>Casas</span></button>
+      <button class="cat " data-category="Punições"><span class="cat-icon">⚠️</span><span>Punições</span></button>
+    </section>
+
+    <section class="store-layout">
+      <aside class="side-panel">
+        <div class="panel-title">🔥 DESTAQUES</div>
+        <button class="side-filter active" data-category="Destaques">◈ Mais Vendidos</button>
+        <button class="side-filter" data-category="Ofertas">✦ Ofertas</button>
+        <button class="side-filter" data-category="Novidades">✧ Novidades</button>
+
+        <div class="side-promo">
+          <span>♛</span>
+          <strong>QUALIDADE<br>SEGURANÇA<br>SUPORTE</strong>
+          <small>Sua compra em<br><b>BOAS MÃOS!</b></small>
+        </div>
+      </aside>
+
+      <section class="products-area">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">LOJA SAPUCAIA</p>
+            <h1 id="sectionTitle">PRODUTOS EM DESTAQUE</h1>
+            <span id="sectionSub">Os itens mais procurados da nossa loja.</span>
+          </div>
+          <button id="viewAll" class="outline-btn">Ver todos →</button>
+        </div>
+
+        <div id="productsGrid" class="products-grid"></div>
+
+        <div class="promo-row">
+          <button class="wide-promo" data-category="Carros">
+            <span>♛</span>
+            <div><b>MAIS VENDIDOS</b><small>Os produtos que mais saem!</small></div>
+            <em>Ver agora →</em>
+          </button>
+
+          <button class="wide-promo" data-category="Ofertas">
+            <span>%</span>
+            <div><b>OFERTAS</b><small>Produtos com descontos especiais!</small></div>
+            <em>Ver agora →</em>
+          </button>
+
+          <button class="wide-promo" data-category="Novidades">
+            <span>☆</span>
+            <div><b>NOVIDADES</b><small>Os lançamentos da loja!</small></div>
+            <em>Ver agora →</em>
+          </button>
+        </div>
+      </section>
+
+      <aside class="right-panel">
+        <div class="benefits">
+          <div class="mini-brand">
+            ♛ SAPUCAIA
+            <small>RIO DE JANEIRO</small>
+          </div>
+
+          <div class="benefit">
+            <b>▣</b>
+            <span>ENTREGA RÁPIDA<small>Produtos liberados no seu servidor</small></span>
+          </div>
+
+          <div class="benefit">
+            <b>♧</b>
+            <span>SUPORTE ESPECIALIZADO<small>Estamos sempre online</small></span>
+          </div>
+
+          <div class="benefit">
+            <b>♢</b>
+            <span>COMPRA SEGURA<small>Seus dados protegidos</small></span>
+          </div>
+        </div>
+
+        <button class="discord-card" id="discordSupport">
+          <b>◉</b>
+          <span>
+            ENTRE NO NOSSO
+            <strong>DISCORD</strong>
+            <small>Tire suas dúvidas e fique por dentro de todas as novidades!</small>
+          </span>
+        </button>
+      </aside>
+    </section>
+
+    <section id="pedidos" class="info-section">
+      <div class="info-card">
+        <span>▤</span>
+        <div>
+          <p class="eyebrow">MINHA CONTA</p>
+          <h2>MEUS PEDIDOS</h2>
+          <p>Acompanhe compras, produtos ativos e status dos pedidos.</p>
+        </div>
+        <button class="outline-btn" id="ordersBtn">Acessar pedidos</button>
+      </div>
+    </section>
+
+    <section id="suporte" class="support-section">
+      <div class="section-head centered">
+        <div>
+          <p class="eyebrow">ATENDIMENTO</p>
+          <h2>PRECISA DE AJUDA?</h2>
+          <span>Encontre respostas ou fale com nossa equipe.</span>
+        </div>
+      </div>
+
+      <div class="support-grid">
+        <button class="support-card" id="faqBtn">
+          <b>?</b>
+          <strong>FAQ</strong>
+          <small>Respostas para as dúvidas mais comuns.</small>
+        </button>
+
+        <button class="support-card" id="contactBtn">
+          <b>◉</b>
+          <strong>ENTRAR EM CONTATO</strong>
+          <small>Fale com o suporte da SAPUCAIA.</small>
+        </button>
+
+        <button class="support-card" id="discordBtn">
+          <b>◌</b>
+          <strong>DISCORD</strong>
+          <small>Entre na comunidade oficial.</small>
+        </button>
+
+        <button class="support-card" id="buyInfoBtn">
+          <b>✓</b>
+          <strong>COMPRAS</strong>
+          <small>Informações sobre pagamento e entrega.</small>
+        </button>
+      </div>
+
+      <div class="faq" id="faq">
+        <details>
+          <summary>Como comprar?</summary>
+          <p>Escolha uma categoria, abra o produto, adicione ao carrinho e avance para o pagamento.</p>
+        </details>
+
+        <details>
+          <summary>Como funciona o pagamento?</summary>
+          <p>O pagamento é criado pelo backend conforme o método habilitado no painel ADM.</p>
+        </details>
+
+        <details>
+          <summary>Quando recebo meu produto?</summary>
+          <p>Após a confirmação do pagamento, o produto será enviado conforme a configuração de entrega.</p>
+        </details>
+
+        <details>
+          <summary>Qual a validade dos produtos?</summary>
+          <p>A validade é exibida nos detalhes de cada produto quando aplicável.</p>
+        </details>
+
+        <details>
+          <summary>Não recebi minha compra, o que faço?</summary>
+          <p>Entre em contato com o suporte e informe os dados do pedido.</p>
+        </details>
+
+        <details>
+          <summary>Como usar um cupom?</summary>
+          <p>No carrinho, digite o cupom disponível e clique em aplicar.</p>
+        </details>
+
+        <details>
+          <summary>Como entrar em contato com o suporte?</summary>
+          <p>Use a área de suporte ou o botão do Discord.</p>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-brand">
+      <span>♛</span>
+      <strong>
+        <b data-theme-shop-name>SAPUCAIA</b>
+        <small data-theme-city>RIO DE JANEIRO</small>
+      </strong>
+      <em>LOJA OFICIAL DE FIVEM</em>
+    </div>
+
+    <div class="footer-links">
+      <button data-scroll="#inicio">Início</button>
+      <button data-scroll="#suporte">Suporte</button>
+      <button data-scroll="#pedidos">Meus Pedidos</button>
+      <a class="footer-link" href="terms.html" target="_blank" rel="noopener">Termos</a>
+      <button type="button" id="privacyFooterBtn">Privacidade</button>
+    </div>
+
+    <div class="footer-badges">
+      <span>♢ Compra segura</span>
+      <span>ϟ Entrega rápida</span>
+      <span>♧ Suporte 24/7</span>
+    </div>
+
+    <small class="copyright">© 2026 Sapucaia • Todos os direitos reservados.</small>
+  </footer>
+
+  <div class="modal-backdrop" id="productModal">
+    <div class="modal product-modal">
+      <div id="productDetail"></div>
+    </div>
+  </div>
+
+  <div class="drawer-backdrop" id="cartBackdrop">
+    <aside class="cart-drawer">
+      <button class="modal-close" id="cartClose">×</button>
+
+      <div class="drawer-head">
+        <h2>SEU CARRINHO</h2>
+        <span id="cartCountBig">0 itens</span>
+      </div>
+
+      <div id="cartItems"></div>
+
+      <div class="cart-bottom">
+        <div class="coupon-input">
+          <input id="couponInput" placeholder="Digite seu cupom" autocomplete="off">
+          <button id="applyCoupon">Aplicar</button>
+        </div>
+
+        <div class="totals">
+          <span>Subtotal <b id="subtotal">R$ 0,00</b></span>
+          <span>Desconto <b id="discount">R$ 0,00</b></span>
+          <strong>Total <b id="total">R$ 0,00</b></strong>
+        </div>
+
+        <button class="primary-btn checkout" id="checkout">
+          Continuar para pagamento
+        </button>
+      </div>
+    </aside>
+  </div>
+
+  <div class="modal-backdrop checkout-backdrop" id="checkoutModal" aria-hidden="true">
+    <div class="modal checkout-modal">
+      <button class="modal-close" id="checkoutClose" aria-label="Fechar checkout">×</button>
+
+      <div class="checkout-head">
+        <div>
+          <p class="eyebrow">CHECKOUT SEGURO</p>
+          <h2>FINALIZAR COMPRA</h2>
+          <span id="checkoutOrderLabel">Seu pedido será criado agora.</span>
+        </div>
+
+        <div class="checkout-steps">
+          <span class="current" data-step-label="1">1. Dados</span>
+          <span data-step-label="2">2. Entrega</span>
+          <span data-step-label="3">3. Pagamento</span>
+          <span data-step-label="4">4. Concluído</span>
+        </div>
+      </div>
+
+      <div class="checkout-step active" data-step="1">
+        <div class="checkout-grid">
+          <label>
+            País
+            <select id="checkoutCountry">
+              <option value="Brasil">Brasil</option>
+              <option value="Argentina">Argentina</option>
+              <option value="Chile">Chile</option>
+              <option value="Paraguai">Paraguai</option>
+              <option value="Uruguai">Uruguai</option>
+              <option value="Estados Unidos">Estados Unidos</option>
+              <option value="Portugal">Portugal</option>
+              <option value="Espanha">Espanha</option>
+              <option value="Outro">Outro país</option>
+            </select>
+          </label>
+
+          <label>
+            Nome completo
+            <input id="checkoutName" autocomplete="name" placeholder="Seu nome completo">
+          </label>
+
+          <label>
+            E-mail
+            <input id="checkoutEmail" type="email" autocomplete="email" placeholder="seu@email.com">
+          </label>
+
+          <label>
+            CPF
+            <input id="checkoutCpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00">
+          </label>
+
+          <label>
+            Celular
+            <input id="checkoutPhone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="Seu celular">
+          </label>
+        </div>
+
+        <button class="primary-btn checkout-next" data-next="2">
+          Prosseguir <span>→</span>
+        </button>
+      </div>
+
+      <div class="checkout-step" data-step="2">
+        <div class="delivery-note">
+          <b>Quem vai receber?</b>
+          <span>Informe o ID/Passaporte do jogador que deverá receber o produto no FiveM.</span>
+        </div>
+
+        <div class="checkout-grid">
+          <label>
+            ID / Passaporte do destinatário
+            <input id="checkoutRecipientId" inputmode="numeric" placeholder="Ex.: 2908">
+          </label>
+        </div>
+
+        <div class="discord-login-box">
+          <div>
+            <b>Discord do comprador</b>
+            <span id="discordLoginState">Não conectado</span>
+          </div>
+
+          <button class="outline-btn" id="checkoutDiscordLogin">
+            ◉ Login com Discord
+          </button>
+        </div>
+
+        <div class="checkout-actions">
+          <button class="ghost-btn checkout-back" data-back="1">← Voltar</button>
+          <button class="primary-btn checkout-next" data-next="3">
+            Prosseguir <span>→</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="checkout-step" data-step="3">
+        <div class="payment-methods">
+          <button class="payment-option active" data-method="pix">
+            <strong>PIX</strong>
+            <span>QR Code + Copia e Cola</span>
+          </button>
+
+          <button class="payment-option" data-method="infinitepay">
+            <strong>INFINITEPAY</strong>
+            <span>Pix ou cartão no checkout</span>
+          </button>
+        </div>
+
+        <label class="terms-line">
+          <input id="checkoutTerms" type="checkbox">
+          <span>
+            Estou de acordo com os
+            <a href="terms.html" id="checkoutTermsLink" target="_blank" rel="noopener">
+              termos de serviço
+            </a>.
+          </span>
+        </label>
+
+        <div class="checkout-actions">
+          <button class="ghost-btn checkout-back" data-back="2">← Voltar</button>
+          <button class="primary-btn" id="createPaymentBtn">
+            Continuar para pagamento <span>→</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="checkout-step" data-step="4">
+        <div id="paymentResult" class="payment-result"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
