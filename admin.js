@@ -821,6 +821,126 @@ function renderProducts() {
   }
 }
 
+
+function renderOrders() {
+  const table = $('#orderTable');
+  if (!table) return;
+
+  const filter = $('#orderStatusFilter')?.value || '';
+  const list = state.orders.filter(order => !filter || String(order.status || 'Aguardando pagamento') === filter);
+
+  if (!list.length) {
+    table.innerHTML = '<div class="empty">Nenhum pedido encontrado.</div>';
+    return;
+  }
+
+  table.innerHTML = `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>PEDIDO</th>
+          <th>CLIENTE</th>
+          <th>STATUS</th>
+          <th>TOTAL</th>
+          <th>DATA</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${list.map(order => {
+          const customer = order.personal || order.customer || {};
+          const name = customer.name || order.name || 'Cliente';
+          const date = order.createdAt || order.updatedAt;
+          const formattedDate = date ? new Date(date).toLocaleString('pt-BR') : '-';
+          const status = order.status || 'Aguardando pagamento';
+          return `
+            <tr>
+              <td>${esc(order.id || '-')}</td>
+              <td>${esc(name)}</td>
+              <td>${esc(status)}</td>
+              <td>${money(order.total)}</td>
+              <td>${esc(formattedDate)}</td>
+            </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+function renderCustomers() {
+  const table = $('#customerTable');
+  if (!table) return;
+
+  if (!state.customers.length) {
+    table.innerHTML = '<div class="empty">Nenhum cliente encontrado.</div>';
+    return;
+  }
+
+  table.innerHTML = `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>NOME</th>
+          <th>E-MAIL</th>
+          <th>TELEFONE</th>
+          <th>CPF</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${state.customers.map(customer => `
+          <tr>
+            <td>${esc(customer.name || customer.nome || '-')}</td>
+            <td>${esc(customer.email || '-')}</td>
+            <td>${esc(customer.phone || customer.telefone || '-')}</td>
+            <td>${esc(customer.cpf || '-')}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function renderCoupon() {
+  const code = String(state.settings?.couponCode || '').trim().toUpperCase();
+  const percent = Math.max(0, Math.min(100, Number(state.settings?.couponPercent) || 0));
+  const codeInput = $('#couponCodeAdmin');
+  const percentInput = $('#couponPercentAdmin');
+  const preview = $('#couponPreview');
+  const headline = $('#couponHeadline');
+
+  if (codeInput && document.activeElement !== codeInput) codeInput.value = code;
+  if (percentInput && document.activeElement !== percentInput) percentInput.value = percent || '';
+  if (preview) preview.textContent = code || 'SAPUCAIA50';
+  if (headline) headline.textContent = `${percent || 50}% OFF EM TODOS OS PRODUTOS`;
+}
+
+$('#orderStatusFilter')?.addEventListener('change', renderOrders);
+$('#couponCodeAdmin')?.addEventListener('input', () => {
+  const value = String($('#couponCodeAdmin')?.value || '').toUpperCase();
+  if ($('#couponPreview')) $('#couponPreview').textContent = value || 'SAPUCAIA50';
+});
+$('#couponPercentAdmin')?.addEventListener('input', () => {
+  const value = Math.max(0, Math.min(100, Number($('#couponPercentAdmin')?.value) || 0));
+  if ($('#couponHeadline')) $('#couponHeadline').textContent = `${value || 50}% OFF EM TODOS OS PRODUTOS`;
+});
+$('#saveCoupon')?.addEventListener('click', async () => {
+  const button = $('#saveCoupon');
+  const couponCode = String($('#couponCodeAdmin')?.value || '').trim().toUpperCase();
+  const couponPercent = Math.max(0, Math.min(100, Number($('#couponPercentAdmin')?.value) || 0));
+
+  button.disabled = true;
+  try {
+    const result = await api('/api/store?resource=settings-admin', {
+      method: 'POST',
+      headers: {'content-type': 'application/json'},
+      body: JSON.stringify({settings: {couponCode, couponPercent}})
+    });
+    state.settings = {...state.settings, ...(result.settings || {}), couponCode, couponPercent};
+    renderCoupon();
+    toast('Cupom salvo com sucesso.');
+  } catch (error) {
+    toast(error?.message || 'Não foi possível salvar o cupom.');
+  } finally {
+    button.disabled = false;
+  }
+});
+
 function resetHistory() {
   state.history = [
     clone(state.draft)
@@ -2488,123 +2608,3 @@ $('#saveSupport').onclick =
   async () => {
     let faq;
 
-    try {
-      faq =
-        JSON.parse(
-          $('#faqJson')
-            .value
-        );
-
-      if (
-        !Array.isArray(faq)
-      ) {
-        throw new Error();
-      }
-    } catch {
-      toast(
-        'FAQ precisa ser um JSON válido em lista.'
-      );
-
-      return;
-    }
-
-    await saveSettings({
-      discordUrl:
-        $('#supportDiscordUrl')
-          .value.trim(),
-
-      supportUrl:
-        $('#supportUrl')
-          .value.trim(),
-
-      supportEmail:
-        $('#supportEmail')
-          .value.trim(),
-
-      termsUrl:
-        $('#termsUrl')
-          .value.trim() ||
-        'terms.html',
-
-      faq
-    });
-  };
-
-$('#changeCredentials').onclick =
-  async () => {
-    try {
-      await api(
-        '/api/auth',
-        {
-          method: 'POST',
-          headers: {
-            'content-type':
-              'application/json'
-          },
-          body: JSON.stringify(
-            {
-              action:
-                'change-credentials',
-
-              username:
-                $('#securityUser')
-                  .value.trim(),
-
-              currentPassword:
-                $('#securityCurrent')
-                  .value,
-
-              newPassword:
-                $('#securityNew')
-                  .value,
-
-              confirmation:
-                $('#securityConfirm')
-                  .value
-            }
-          )
-        }
-      );
-
-      $('#securityCurrent').value =
-        '';
-
-      $('#securityNew').value =
-        '';
-
-      $('#securityConfirm').value =
-        '';
-
-      toast(
-        'Credenciais alteradas.'
-      );
-    } catch (error) {
-      toast(
-        error.message
-      );
-    }
-  };
-
-let syncInFlight = false;
-
-async function syncAdminNow() {
-  if (syncInFlight || $('#app')?.classList.contains('hidden')) return;
-  syncInFlight = true;
-  try {
-    await api('/api/store?resource=health');
-    await loadAll();
-  } catch (error) {
-    console.error('SAPUCAIA CONNECTION:', error);
-    const status = $('#adminStatus');
-    if (status) {
-      status.textContent = '● Loja offline';
-      status.title = error?.message || 'Falha na conexão.';
-    }
-  } finally {
-    syncInFlight = false;
-  }
-}
-
-setInterval(syncAdminNow, 3000);
-
-boot();
