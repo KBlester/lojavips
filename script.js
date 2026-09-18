@@ -1,4 +1,4 @@
-let products=[];
+et products=[];
 let activeCategory='Destaques';
 let cart=[];
 let coupon=false;
