@@ -609,12 +609,84 @@ export default async function handler(req) {
       req.method === 'GET' &&
       resource === 'health'
     ) {
-      return json({
-        ok: true,
-        service: 'store',
-        time:
-          new Date().toISOString()
+      try {
+        // A saúde da API só é considerada OK depois de confirmar
+        // acesso real aos stores persistentes usados pela loja.
+        const [productList, settings] = await Promise.all([
+          products(),
+          getSettings()
+        ]);
+
+        return json({
+          ok: true,
+          service: 'store',
+          blobs: true,
+          products: Array.isArray(productList) ? productList.length : 0,
+          settings: !!settings,
+          time: new Date().toISOString()
+        });
+      } catch (error) {
+        return json({
+          ok: false,
+          service: 'store',
+          blobs: false,
+          error: error?.message || 'Netlify Blobs indisponível.',
+          time: new Date().toISOString()
+        }, 503);
+      }
+    }
+
+    /*
+     * ==========================
+     * ADMIN SYNC
+     * ==========================
+     *
+     * Uma única chamada abastece o painel inteiro. Isso evita que
+     * quatro requisições independentes deixem o painel em
+     * “Aguardando conexão” quando apenas uma delas falhar.
+     */
+    if (
+      req.method === 'GET' &&
+      resource === 'sync'
+    ) {
+      if (!requireAdmin(req)) {
+        return json({ error: 'Não autorizado' }, 401);
+      }
+
+      const results = await Promise.allSettled([
+        products(),
+        orders(),
+        customers(),
+        getSettings()
+      ]);
+
+      const names = ['products', 'orders', 'customers', 'settings'];
+      const payload = {};
+      const errors = [];
+
+      results.forEach((result, index) => {
+        const name = names[index];
+        if (result.status === 'fulfilled') {
+          payload[name] = result.value;
+        } else {
+          errors.push({
+            resource: name,
+            error: result.reason?.message || 'Falha ao sincronizar.'
+          });
+        }
       });
+
+      return json({
+        ok: errors.length === 0,
+        connected: Object.keys(payload).length > 0,
+        partial: errors.length > 0 && Object.keys(payload).length > 0,
+        errors,
+        products: Array.isArray(payload.products) ? payload.products : [],
+        orders: Array.isArray(payload.orders) ? payload.orders : [],
+        customers: Array.isArray(payload.customers) ? payload.customers : [],
+        settings: payload.settings || null,
+        serverTime: new Date().toISOString()
+      }, 200);
     }
 
     /*
