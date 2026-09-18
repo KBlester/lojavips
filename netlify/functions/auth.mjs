@@ -1,7 +1,14 @@
-import { getAdminCredentials, setAdminCredentials, hashPassword, verifyPassword, signSession, cookie, json, requireAdmin } from './_lib.mjs';
+import { getAdminCredentials, setAdminCredentials, deleteAdminCredentials, hashPassword, verifyPassword, signSession, cookie, json, requireAdmin } from './_lib.mjs';
 
 export default async req=>{
   if(req.method==='GET'){
+    const url=new URL(req.url);
+    const resetToken=String(url.searchParams.get('reset')||'');
+    const configuredResetToken=String(process.env.ADMIN_RESET_TOKEN||'').trim();
+    if(resetToken && configuredResetToken && resetToken===configuredResetToken){
+      await deleteAdminCredentials();
+      return new Response(JSON.stringify({ok:true,reset:true,setupRequired:true}),{status:200,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','Set-Cookie':cookie('sapucaia_session','',{maxAge:0})}});
+    }
     const creds=await getAdminCredentials();
     const session=requireAdmin(req);
     return json({setupRequired:!creds,authenticated:!!session,username:session?.username||null});
