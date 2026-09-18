@@ -2818,7 +2818,7 @@ loadStoreCatalog();
 
 setInterval(
   loadStoreCatalog,
-  10000
+  3000
 );
 
 window.addEventListener(
