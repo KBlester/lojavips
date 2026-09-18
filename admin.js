@@ -417,38 +417,28 @@ $('#mobileMenu')?.addEventListener(
 
 async function loadAll() {
   try {
-    const [
-      products,
-      orders,
-      customers,
-      settings
-    ] = await Promise.all([
-      api(
-        '/api/store?resource=products'
-      ),
-      api(
-        '/api/store?resource=orders'
-      ),
-      api(
-        '/api/store?resource=customers'
-      ),
-      api(
-        '/api/store?resource=settings-admin'
-      )
-    ]);
+    const sync = await api(
+      '/api/store?resource=sync'
+    );
 
     state.products =
-      products.products || [];
+      Array.isArray(sync.products)
+        ? sync.products
+        : [];
 
     state.orders =
-      orders.orders || [];
+      Array.isArray(sync.orders)
+        ? sync.orders
+        : [];
 
     state.customers =
-      customers.customers || [];
+      Array.isArray(sync.customers)
+        ? sync.customers
+        : [];
 
     state.settings = {
       ...DEFAULT_APPEARANCE,
-      ...(settings.settings || {})
+      ...(sync.settings || {})
     };
 
     state.draft =
@@ -2540,57 +2530,66 @@ $('#changeCredentials').onclick =
     }
   };
 
-setInterval(
-  async () => {
-    if (
-      $('#app')
-        ?.classList.contains(
-          'hidden'
-        )
-    ) {
-      return;
+let syncInFlight = false;
+
+async function syncAdminNow() {
+  if (syncInFlight) return;
+  if ($('#app')?.classList.contains('hidden')) return;
+
+  syncInFlight = true;
+
+  try {
+    const sync = await api(
+      '/api/store?resource=sync'
+    );
+
+    if (Array.isArray(sync.products)) {
+      state.products = sync.products;
     }
 
-    try {
-      const [p, o, c] = await Promise.allSettled([
-        api('/api/store?resource=products'),
-        api('/api/store?resource=orders'),
-        api('/api/store?resource=customers')
-      ]);
+    if (Array.isArray(sync.orders)) {
+      state.orders = sync.orders;
+    }
 
-      let ok = 0;
+    if (Array.isArray(sync.customers)) {
+      state.customers = sync.customers;
+    }
 
-      if (p.status === 'fulfilled') {
-        state.products = p.value.products || [];
-        ok++;
-      }
+    if (sync.settings) {
+      state.settings = {
+        ...DEFAULT_APPEARANCE,
+        ...sync.settings
+      };
+    }
 
-      if (o.status === 'fulfilled') {
-        state.orders = o.value.orders || [];
-        ok++;
-      }
+    renderAll();
 
-      if (c.status === 'fulfilled') {
-        state.customers = c.value.customers || [];
-        ok++;
-      }
-
-      if (ok > 0) {
-        renderAll();
-        $('#adminStatus').textContent =
-          ok === 3
-            ? '● Sincronizado'
-            : '● Conectado (sincronização parcial)';
+    const status = $('#adminStatus');
+    if (status) {
+      if (sync.connected && sync.partial) {
+        status.textContent =
+          '● Conectado (sincronização parcial)';
+      } else if (sync.connected && sync.ok) {
+        status.textContent =
+          '● Sincronizado';
       } else {
-        $('#adminStatus').textContent =
-          '● Aguardando conexão';
+        status.textContent =
+          '● Conectado';
       }
-    } catch {
-      $('#adminStatus').textContent =
-        '● Aguardando conexão';
     }
-  },
-  10000
-);
+  } catch (error) {
+    console.error('SAPUCAIA SYNC:', error);
+    const status = $('#adminStatus');
+    if (status) {
+      status.textContent =
+        '● Erro de conexão com o servidor';
+      status.title = error?.message || '';
+    }
+  } finally {
+    syncInFlight = false;
+  }
+}
+
+setInterval(syncAdminNow, 3000);
 
 boot();
