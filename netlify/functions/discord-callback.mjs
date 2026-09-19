@@ -5,7 +5,7 @@ export default async (req) => {
 
   try {
 
-import * as crypto from 'node:crypto';
+import crypto from 'crypto';
 
 const DEFAULT_CLIENT_ID = '1548916664895144046';
 
