@@ -2,17 +2,17 @@ import crypto from 'crypto';
 
 const DEFAULT_CLIENT_ID = '1548916664895144046';
 
-const DISCORD_REDIRECT_URI =
-  'https://sapucaia-rj-lojaa-ofical.netlify.app/api/discord-callback';
-
 function getDiscordConfig() {
   const clientId = String(
     process.env.DISCORD_CLIENT_ID || DEFAULT_CLIENT_ID
   ).trim();
 
+  const redirectUri =
+    'https://sapucaia-rj-lojaa-ofical.netlify.app/api/discord-callback';
+
   return {
     clientId,
-    redirectUri: DISCORD_REDIRECT_URI
+    redirectUri
   };
 }
 
@@ -35,13 +35,19 @@ function verifySignedState(state, secret) {
     const parts = String(state || '').split('.');
 
     if (parts.length !== 2) {
-      return false;
+      return {
+        valid: false,
+        reason: 'state não possui o formato esperado.'
+      };
     }
 
     const [encodedPayload, signature] = parts;
 
     if (!encodedPayload || !signature) {
-      return false;
+      return {
+        valid: false,
+        reason: 'state está incompleto.'
+      };
     }
 
     const payload = Buffer
@@ -53,14 +59,25 @@ function verifySignedState(state, secret) {
       .update(payload)
       .digest('base64url');
 
-    if (!safeEqual(signature, expectedSignature)) {
-      return false;
+    if (
+      !safeEqual(
+        signature,
+        expectedSignature
+      )
+    ) {
+      return {
+        valid: false,
+        reason: 'assinatura do state é inválida.'
+      };
     }
 
     const separator = payload.indexOf('.');
 
     if (separator === -1) {
-      return false;
+      return {
+        valid: false,
+        reason: 'payload do state está inválido.'
+      };
     }
 
     const issuedAt = Number(
@@ -68,44 +85,91 @@ function verifySignedState(state, secret) {
     );
 
     if (!Number.isFinite(issuedAt)) {
-      return false;
+      return {
+        valid: false,
+        reason: 'data de emissão do state é inválida.'
+      };
     }
 
     const age = Date.now() - issuedAt;
 
     if (age > 10 * 60 * 1000) {
-      return false;
+      return {
+        valid: false,
+        reason: 'state expirou há mais de 10 minutos.'
+      };
     }
 
     if (age < -60 * 1000) {
-      return false;
+      return {
+        valid: false,
+        reason: 'data do state está mais de 1 minuto no futuro.'
+      };
     }
 
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
-
-async function readResponseBody(response) {
-  const text = await response.text();
-
-  if (!text) {
-    return {};
-  }
-
-  try {
-    return JSON.parse(text);
+    return {
+      valid: true,
+      reason: 'state válido.'
+    };
   } catch (error) {
     return {
-      raw: text.slice(0, 500)
+      valid: false,
+      reason:
+        error?.message ||
+        String(error)
     };
   }
 }
 
+async function readDiscordResponse(response) {
+  const text = await response.text();
+
+  let data = null;
+
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = null;
+  }
+
+  return {
+    status: response.status,
+    statusText: response.statusText,
+    ok: response.ok,
+    text,
+    data
+  };
+}
+
+function diagnosticResponse(stage, details, status = 502) {
+  return new Response(
+    JSON.stringify(
+      {
+        ok: false,
+        diagnostic: true,
+        stage,
+        time: new Date().toISOString(),
+        ...details
+      },
+      null,
+      2
+    ),
+    {
+      status,
+      headers: {
+        'content-type':
+          'application/json; charset=utf-8',
+        'cache-control':
+          'no-store, no-cache, must-revalidate',
+        pragma: 'no-cache'
+      }
+    }
+  );
+}
+
 export default async (req) => {
   console.log(
-    '========== DISCORD CALLBACK FOI CHAMADO =========='
+    '========== DISCORD CALLBACK =========='
   );
 
   console.log(
@@ -119,19 +183,34 @@ export default async (req) => {
   );
 
   try {
+    /*
+     * =========================================================
+     * ETAPA 1 — MÉTODO
+     * =========================================================
+     */
+
     if (req.method !== 'GET') {
-      return new Response(
-        'Método não permitido.',
+      console.error(
+        '[1] Método HTTP inválido:',
+        req.method
+      );
+
+      return diagnosticResponse(
+        'method_check',
         {
-          status: 405,
-          headers: {
-            Allow: 'GET',
-            'content-type':
-              'text/plain; charset=utf-8'
-          }
-        }
+          message:
+            'O callback recebeu um método diferente de GET.',
+          method: req.method
+        },
+        405
       );
     }
+
+    /*
+     * =========================================================
+     * ETAPA 2 — PARÂMETROS DO DISCORD
+     * =========================================================
+     */
 
     const url = new URL(req.url);
 
@@ -152,17 +231,24 @@ export default async (req) => {
     ).trim();
 
     console.log(
-      'Discord callback recebido:',
+      '[2] Callback recebido:',
       {
         hasCode: Boolean(code),
         hasState: Boolean(state),
-        hasError: Boolean(discordError)
+        hasDiscordError: Boolean(discordError),
+        hasDiscordErrorDescription:
+          Boolean(discordErrorDescription)
       }
     );
 
+    /*
+     * IMPORTANTE:
+     * Não exibimos o code nem o state completo.
+     */
+
     if (discordError) {
       console.error(
-        'Discord authorization error:',
+        '[2] Discord devolveu erro diretamente:',
         {
           error: discordError,
           error_description:
@@ -170,25 +256,45 @@ export default async (req) => {
         }
       );
 
-      return new Response(
-        JSON.stringify({
-          ok: false,
-          stage: 'discord_authorization',
+      return diagnosticResponse(
+        'discord_authorization',
+        {
+          message:
+            'O Discord recusou ou cancelou a autorização.',
           discord_error: discordError,
           discord_error_description:
             discordErrorDescription || null
-        }, null, 2),
-        {
-          status: 400,
-          headers: {
-            'content-type':
-              'application/json; charset=utf-8',
-            'cache-control':
-              'no-store'
-          }
-        }
+        },
+        400
       );
     }
+
+    if (!code || !state) {
+      console.error(
+        '[2] Code ou state ausente:',
+        {
+          hasCode: Boolean(code),
+          hasState: Boolean(state)
+        }
+      );
+
+      return diagnosticResponse(
+        'callback_parameters',
+        {
+          message:
+            'O callback foi chamado sem code e/ou state.',
+          has_code: Boolean(code),
+          has_state: Boolean(state)
+        },
+        400
+      );
+    }
+
+    /*
+     * =========================================================
+     * ETAPA 3 — CONFIGURAÇÃO
+     * =========================================================
+     */
 
     const {
       clientId,
@@ -203,69 +309,98 @@ export default async (req) => {
       process.env.DISCORD_SESSION_SECRET || ''
     ).trim();
 
+    console.log(
+      '[3] Configuração:',
+      {
+        clientId: clientId
+          ? 'CONFIGURADO'
+          : 'AUSENTE',
+        clientSecret:
+          clientSecret
+            ? 'CONFIGURADO'
+            : 'AUSENTE',
+        sessionSecret:
+          sessionSecret
+            ? 'CONFIGURADO'
+            : 'AUSENTE',
+        redirectUri
+      }
+    );
+
     if (!clientSecret || !sessionSecret) {
       console.error(
-        'Discord OAuth incompleto: falta DISCORD_CLIENT_SECRET ou DISCORD_SESSION_SECRET.'
+        '[3] Variáveis de ambiente ausentes.'
       );
 
-      return new Response(
-        'Discord OAuth não configurado corretamente no servidor.',
+      return diagnosticResponse(
+        'server_configuration',
         {
-          status: 503,
-          headers: {
-            'content-type':
-              'text/plain; charset=utf-8',
-            'cache-control':
-              'no-store'
-          }
-        }
-      );
-    }
-
-    if (!code || !state) {
-      return new Response(
-        'Autorização do Discord inválida ou expirada.',
-        {
-          status: 400,
-          headers: {
-            'content-type':
-              'text/plain; charset=utf-8',
-            'cache-control':
-              'no-store'
-          }
-        }
-      );
-    }
-
-    if (
-      !verifySignedState(
-        state,
-        sessionSecret
-      )
-    ) {
-      console.error(
-        'Discord OAuth: state inválido ou expirado.'
-      );
-
-      return new Response(
-        'Autorização do Discord inválida ou expirada.',
-        {
-          status: 400,
-          headers: {
-            'content-type':
-              'text/plain; charset=utf-8',
-            'cache-control':
-              'no-store'
-          }
-        }
+          message:
+            'As variáveis necessárias do Discord não estão configuradas.',
+          client_id_configured:
+            Boolean(clientId),
+          client_secret_configured:
+            Boolean(clientSecret),
+          session_secret_configured:
+            Boolean(sessionSecret),
+          redirect_uri:
+            redirectUri
+        },
+        503
       );
     }
 
     /*
-     * ============================================================
-     * TROCA DO CODE PELO ACCESS TOKEN
-     * ============================================================
+     * =========================================================
+     * ETAPA 4 — VALIDAR STATE
+     * =========================================================
      */
+
+    console.log(
+      '[4] Validando state...'
+    );
+
+    const stateResult =
+      verifySignedState(
+        state,
+        sessionSecret
+      );
+
+    console.log(
+      '[4] Resultado do state:',
+      {
+        valid: stateResult.valid,
+        reason: stateResult.reason
+      }
+    );
+
+    if (!stateResult.valid) {
+      console.error(
+        '[4] STATE INVÁLIDO:',
+        stateResult.reason
+      );
+
+      return diagnosticResponse(
+        'state_validation',
+        {
+          message:
+            'O state enviado pelo Discord não passou na validação.',
+          reason:
+            stateResult.reason
+        },
+        400
+      );
+    }
+
+    /*
+     * =========================================================
+     * ETAPA 5 — TROCA DO CODE PELO TOKEN
+     * =========================================================
+     */
+
+    console.log(
+      '[5] Iniciando troca do authorization code com o Discord...'
+    );
 
     const basicCredentials = Buffer
       .from(
@@ -274,171 +409,221 @@ export default async (req) => {
       )
       .toString('base64');
 
-    const tokenBody = new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: redirectUri
-    });
+    const tokenBody =
+      new URLSearchParams({
+        grant_type:
+          'authorization_code',
+        code,
+        redirect_uri:
+          redirectUri
+      });
 
     console.log(
-      'Iniciando troca do authorization code com o Discord.'
+      '[5] Enviando requisição para:',
+      'https://discord.com/api/v10/oauth2/token'
     );
 
     const tokenRes = await fetch(
       'https://discord.com/api/v10/oauth2/token',
       {
         method: 'POST',
-
         headers: {
           'Content-Type':
             'application/x-www-form-urlencoded',
-
           Accept:
             'application/json',
-
           Authorization:
             `Basic ${basicCredentials}`
         },
-
         body:
           tokenBody.toString()
       }
     );
 
+    const tokenResponse =
+      await readDiscordResponse(
+        tokenRes
+      );
+
     const tokenData =
-      await readResponseBody(tokenRes);
+      tokenResponse.data || {};
+
+    console.log(
+      '[5] Resposta do Discord:',
+      {
+        status:
+          tokenResponse.status,
+        statusText:
+          tokenResponse.statusText,
+        ok:
+          tokenResponse.ok,
+        hasAccessToken:
+          Boolean(
+            tokenData.access_token
+          ),
+        error:
+          tokenData.error || null,
+        error_description:
+          tokenData.error_description ||
+          null
+      }
+    );
 
     if (
-      !tokenRes.ok ||
+      !tokenResponse.ok ||
       !tokenData.access_token
     ) {
       console.error(
-        'Discord token exchange failed:',
+        '[5] FALHA NA TROCA DO TOKEN:',
         {
           status:
-            tokenRes.status,
-
-          statusText:
-            tokenRes.statusText,
-
+            tokenResponse.status,
           error:
             tokenData.error || null,
-
           error_description:
-            tokenData.error_description || null
+            tokenData.error_description ||
+            null,
+          response:
+            tokenResponse.text
         }
       );
 
-      return new Response(
-        JSON.stringify({
-          ok: false,
-
-          stage:
-            'token_exchange',
-
+      return diagnosticResponse(
+        'token_exchange',
+        {
+          message:
+            'O Discord recusou a troca do authorization code pelo access token.',
+          http_status:
+            tokenResponse.status,
+          http_status_text:
+            tokenResponse.statusText,
           discord_error:
             tokenData.error || null,
-
           discord_error_description:
-            tokenData.error_description || null,
-
-          http_status:
-            tokenRes.status
-        }, null, 2),
-        {
-          status: 502,
-
-          headers: {
-            'content-type':
-              'application/json; charset=utf-8',
-
-            'cache-control':
-              'no-store'
-          }
-        }
+            tokenData.error_description ||
+            null,
+          discord_response:
+            tokenData &&
+            Object.keys(tokenData).length
+              ? tokenData
+              : tokenResponse.text
+        },
+        502
       );
     }
 
     console.log(
-      'Authorization code aceito pelo Discord.'
+      '[5] TOKEN OBTIDO COM SUCESSO.'
     );
 
     /*
-     * ============================================================
-     * BUSCAR USUÁRIO
-     * ============================================================
+     * =========================================================
+     * ETAPA 6 — BUSCAR USUÁRIO
+     * =========================================================
      */
 
-    const accessToken =
-      String(
-        tokenData.access_token
-      ).trim();
+    console.log(
+      '[6] Buscando usuário no Discord...'
+    );
 
     const userRes = await fetch(
       'https://discord.com/api/v10/users/@me',
       {
-        method: 'GET',
-
         headers: {
           Authorization:
-            `Bearer ${accessToken}`,
-
+            `Bearer ${tokenData.access_token}`,
           Accept:
             'application/json'
         }
       }
     );
 
+    const userResponse =
+      await readDiscordResponse(
+        userRes
+      );
+
     const user =
-      await readResponseBody(userRes);
+      userResponse.data || {};
+
+    console.log(
+      '[6] Resposta do usuário:',
+      {
+        status:
+          userResponse.status,
+        ok:
+          userResponse.ok,
+        hasId:
+          Boolean(user.id),
+        hasUsername:
+          Boolean(user.username),
+        hasEmail:
+          Boolean(user.email)
+      }
+    );
 
     if (
-      !userRes.ok ||
+      !userResponse.ok ||
       !user.id
     ) {
       console.error(
-        'Discord user lookup failed:',
+        '[6] FALHA AO BUSCAR USUÁRIO:',
         {
           status:
-            userRes.status,
-
-          statusText:
-            userRes.statusText,
-
+            userResponse.status,
           error:
             user.error || null,
-
           message:
-            user.message || null
+            user.message || null,
+          response:
+            userResponse.text
         }
       );
 
-      return new Response(
-        'Não foi possível obter o usuário do Discord.',
+      return diagnosticResponse(
+        'user_lookup',
         {
-          status: 502,
-
-          headers: {
-            'content-type':
-              'text/plain; charset=utf-8',
-
-            'cache-control':
-              'no-store'
-          }
-        }
+          message:
+            'O token foi obtido, mas o Discord não permitiu buscar o usuário.',
+          http_status:
+            userResponse.status,
+          http_status_text:
+            userResponse.statusText,
+          discord_response:
+            user &&
+            Object.keys(user).length
+              ? user
+              : userResponse.text
+        },
+        502
       );
     }
 
     console.log(
-      'Usuário do Discord obtido com sucesso:',
-      String(user.id)
+      '[6] Usuário obtido com sucesso:',
+      {
+        id:
+          String(user.id),
+        username:
+          String(user.username || ''),
+        hasGlobalName:
+          Boolean(user.global_name),
+        hasEmail:
+          Boolean(user.email),
+        hasAvatar:
+          Boolean(user.avatar)
+      }
     );
 
     /*
-     * ============================================================
-     * CRIAR SESSÃO
-     * ============================================================
+     * =========================================================
+     * ETAPA 7 — CRIAR SESSÃO
+     * =========================================================
      */
+
+    console.log(
+      '[7] Criando sessão do usuário...'
+    );
 
     const now = Date.now();
 
@@ -447,15 +632,13 @@ export default async (req) => {
         String(user.id),
 
       username:
-        String(
-          user.username || ''
-        ),
+        String(user.username || ''),
 
       global_name:
         String(
           user.global_name ||
-            user.username ||
-            ''
+          user.username ||
+          ''
         ),
 
       email:
@@ -480,7 +663,9 @@ export default async (req) => {
           ),
           'utf8'
         )
-        .toString('base64url');
+        .toString(
+          'base64url'
+        );
 
     const signature =
       crypto
@@ -489,34 +674,34 @@ export default async (req) => {
           sessionSecret
         )
         .update(payload)
-        .digest('base64url');
+        .digest(
+          'base64url'
+        );
 
     const sessionToken =
       `${payload}.${signature}`;
 
+    console.log(
+      '[7] Sessão criada com sucesso.'
+    );
+
     /*
-     * ============================================================
-     * COOKIE + REDIRECT
-     * ============================================================
+     * =========================================================
+     * ETAPA 8 — COOKIES
+     * =========================================================
      */
 
     const headers =
-      new Headers();
+      new Headers({
+        'content-type':
+          'text/html; charset=utf-8',
 
-    headers.set(
-      'content-type',
-      'text/html; charset=utf-8'
-    );
+        'cache-control':
+          'no-store, no-cache, must-revalidate',
 
-    headers.set(
-      'cache-control',
-      'no-store, no-cache, must-revalidate'
-    );
-
-    headers.set(
-      'Pragma',
-      'no-cache'
-    );
+        Pragma:
+          'no-cache'
+      });
 
     headers.append(
       'Set-Cookie',
@@ -536,23 +721,29 @@ export default async (req) => {
       )
     );
 
+    console.log(
+      '[8] Cookies de sessão preparados.'
+    );
+
+    /*
+     * =========================================================
+     * ETAPA 9 — REDIRECIONAMENTO
+     * =========================================================
+     */
+
     const html = `
 <!doctype html>
 <html lang="pt-BR">
-
 <head>
   <meta charset="utf-8">
-
   <meta
     name="viewport"
     content="width=device-width,initial-scale=1"
   >
-
   <meta
     http-equiv="Cache-Control"
     content="no-store"
   >
-
   <title>Discord conectado</title>
 </head>
 
@@ -570,15 +761,8 @@ export default async (req) => {
     text-align:center;
     padding:24px;
   ">
-
-    <h2>
-      Discord conectado ✅
-    </h2>
-
-    <p>
-      Redirecionando para a loja...
-    </p>
-
+    <h2>Discord conectado ✅</h2>
+    <p>Redirecionando para a loja...</p>
   </div>
 
   <script>
@@ -588,12 +772,15 @@ export default async (req) => {
   </script>
 
 </body>
-
 </html>
 `;
 
     console.log(
-      'Discord callback concluído com sucesso.'
+      '[9] Discord conectado com sucesso. Redirecionando para a loja.'
+    );
+
+    console.log(
+      '========== DISCORD CALLBACK FINALIZADO =========='
     );
 
     return new Response(
@@ -605,26 +792,46 @@ export default async (req) => {
     );
 
   } catch (error) {
+
+    /*
+     * =========================================================
+     * ERRO INESPERADO
+     * =========================================================
+     */
+
     console.error(
-      'discord-callback error:',
-      error?.stack ||
-        error?.message ||
-        error
+      '========== ERRO INESPERADO NO CALLBACK =========='
     );
 
-    return new Response(
-      'Erro ao conectar o Discord.',
+    console.error(
+      'MESSAGE:',
+      error?.message || null
+    );
+
+    console.error(
+      'NAME:',
+      error?.name || null
+    );
+
+    console.error(
+      'STACK:',
+      error?.stack || null
+    );
+
+    return diagnosticResponse(
+      'unexpected_error',
       {
-        status: 500,
-
-        headers: {
-          'content-type':
-            'text/plain; charset=utf-8',
-
-          'cache-control':
-            'no-store'
-        }
-      }
+        message:
+          'Ocorreu um erro inesperado dentro do callback.',
+        error_name:
+          error?.name || null,
+        error_message:
+          error?.message ||
+          String(error),
+        error_stack:
+          error?.stack || null
+      },
+      500
     );
   }
 };
