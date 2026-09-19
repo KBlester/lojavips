@@ -1,10 +1,3 @@
-export default async (req) => {
-  console.log('========== DISCORD CALLBACK FOI CHAMADO ==========');
-  console.log('METHOD:', req.method);
-  console.log('URL:', req.url);
-
-  try {
-
 import crypto from 'crypto';
 
 const DEFAULT_CLIENT_ID = '1548916664895144046';
@@ -111,6 +104,20 @@ async function readResponseBody(response) {
 }
 
 export default async (req) => {
+  console.log(
+    '========== DISCORD CALLBACK FOI CHAMADO =========='
+  );
+
+  console.log(
+    'METHOD:',
+    req.method
+  );
+
+  console.log(
+    'URL:',
+    req.url
+  );
+
   try {
     if (req.method !== 'GET') {
       return new Response(
@@ -143,6 +150,15 @@ export default async (req) => {
     const discordErrorDescription = String(
       url.searchParams.get('error_description') || ''
     ).trim();
+
+    console.log(
+      'Discord callback recebido:',
+      {
+        hasCode: Boolean(code),
+        hasState: Boolean(state),
+        hasError: Boolean(discordError)
+      }
+    );
 
     if (discordError) {
       console.error(
@@ -264,6 +280,10 @@ export default async (req) => {
       redirect_uri: redirectUri
     });
 
+    console.log(
+      'Iniciando troca do authorization code com o Discord.'
+    );
+
     const tokenRes = await fetch(
       'https://discord.com/api/v10/oauth2/token',
       {
@@ -272,13 +292,16 @@ export default async (req) => {
         headers: {
           'Content-Type':
             'application/x-www-form-urlencoded',
+
           Accept:
             'application/json',
+
           Authorization:
             `Basic ${basicCredentials}`
         },
 
-        body: tokenBody.toString()
+        body:
+          tokenBody.toString()
       }
     );
 
@@ -292,10 +315,15 @@ export default async (req) => {
       console.error(
         'Discord token exchange failed:',
         {
-          status: tokenRes.status,
-          statusText: tokenRes.statusText,
+          status:
+            tokenRes.status,
+
+          statusText:
+            tokenRes.statusText,
+
           error:
             tokenData.error || null,
+
           error_description:
             tokenData.error_description || null
         }
@@ -304,25 +332,36 @@ export default async (req) => {
       return new Response(
         JSON.stringify({
           ok: false,
-          stage: 'token_exchange',
+
+          stage:
+            'token_exchange',
+
           discord_error:
             tokenData.error || null,
+
           discord_error_description:
             tokenData.error_description || null,
+
           http_status:
             tokenRes.status
         }, null, 2),
         {
           status: 502,
+
           headers: {
             'content-type':
               'application/json; charset=utf-8',
+
             'cache-control':
               'no-store'
           }
         }
       );
     }
+
+    console.log(
+      'Authorization code aceito pelo Discord.'
+    );
 
     /*
      * ============================================================
@@ -343,6 +382,7 @@ export default async (req) => {
         headers: {
           Authorization:
             `Bearer ${accessToken}`,
+
           Accept:
             'application/json'
         }
@@ -352,14 +392,22 @@ export default async (req) => {
     const user =
       await readResponseBody(userRes);
 
-    if (!userRes.ok || !user.id) {
+    if (
+      !userRes.ok ||
+      !user.id
+    ) {
       console.error(
         'Discord user lookup failed:',
         {
-          status: userRes.status,
-          statusText: userRes.statusText,
+          status:
+            userRes.status,
+
+          statusText:
+            userRes.statusText,
+
           error:
             user.error || null,
+
           message:
             user.message || null
         }
@@ -369,15 +417,22 @@ export default async (req) => {
         'Não foi possível obter o usuário do Discord.',
         {
           status: 502,
+
           headers: {
             'content-type':
               'text/plain; charset=utf-8',
+
             'cache-control':
               'no-store'
           }
         }
       );
     }
+
+    console.log(
+      'Usuário do Discord obtido com sucesso:',
+      String(user.id)
+    );
 
     /*
      * ============================================================
@@ -388,17 +443,20 @@ export default async (req) => {
     const now = Date.now();
 
     const sessionData = {
-      id: String(user.id),
+      id:
+        String(user.id),
 
-      username: String(
-        user.username || ''
-      ),
+      username:
+        String(
+          user.username || ''
+        ),
 
-      global_name: String(
-        user.global_name ||
-          user.username ||
-          ''
-      ),
+      global_name:
+        String(
+          user.global_name ||
+            user.username ||
+            ''
+        ),
 
       email:
         user.email || null,
@@ -406,27 +464,32 @@ export default async (req) => {
       avatar:
         user.avatar || null,
 
-      iat: now,
+      iat:
+        now,
 
       exp:
         now +
         30 * 24 * 60 * 60 * 1000
     };
 
-    const payload = Buffer
-      .from(
-        JSON.stringify(sessionData),
-        'utf8'
-      )
-      .toString('base64url');
+    const payload =
+      Buffer
+        .from(
+          JSON.stringify(
+            sessionData
+          ),
+          'utf8'
+        )
+        .toString('base64url');
 
-    const signature = crypto
-      .createHmac(
-        'sha256',
-        sessionSecret
-      )
-      .update(payload)
-      .digest('base64url');
+    const signature =
+      crypto
+        .createHmac(
+          'sha256',
+          sessionSecret
+        )
+        .update(payload)
+        .digest('base64url');
 
     const sessionToken =
       `${payload}.${signature}`;
@@ -437,7 +500,8 @@ export default async (req) => {
      * ============================================================
      */
 
-    const headers = new Headers();
+    const headers =
+      new Headers();
 
     headers.set(
       'content-type',
@@ -475,6 +539,7 @@ export default async (req) => {
     const html = `
 <!doctype html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="utf-8">
 
@@ -506,7 +571,9 @@ export default async (req) => {
     padding:24px;
   ">
 
-    <h2>Discord conectado ✅</h2>
+    <h2>
+      Discord conectado ✅
+    </h2>
 
     <p>
       Redirecionando para a loja...
@@ -521,8 +588,13 @@ export default async (req) => {
   </script>
 
 </body>
+
 </html>
 `;
+
+    console.log(
+      'Discord callback concluído com sucesso.'
+    );
 
     return new Response(
       html,
@@ -544,9 +616,11 @@ export default async (req) => {
       'Erro ao conectar o Discord.',
       {
         status: 500,
+
         headers: {
           'content-type':
             'text/plain; charset=utf-8',
+
           'cache-control':
             'no-store'
         }
