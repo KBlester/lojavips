@@ -82,7 +82,7 @@ function verifySignedState(state, secret) {
     }
 
     return true;
-  } catch {
+  } catch (error) {
     return false;
   }
 }
@@ -96,7 +96,7 @@ async function readResponseBody(response) {
 
   try {
     return JSON.parse(text);
-  } catch {
+  } catch (error) {
     return {
       raw: text.slice(0, 500)
     };
@@ -148,12 +148,18 @@ export default async (req) => {
       );
 
       return new Response(
-        'Autorização do Discord cancelada ou recusada.',
+        JSON.stringify({
+          ok: false,
+          stage: 'discord_authorization',
+          discord_error: discordError,
+          discord_error_description:
+            discordErrorDescription || null
+        }, null, 2),
         {
           status: 400,
           headers: {
             'content-type':
-              'text/plain; charset=utf-8',
+              'application/json; charset=utf-8',
             'cache-control':
               'no-store'
           }
@@ -236,11 +242,6 @@ export default async (req) => {
      * ============================================================
      * TROCA DO CODE PELO ACCESS TOKEN
      * ============================================================
-     *
-     * O Discord documenta a autenticação server-to-server
-     * usando HTTP Basic Auth:
-     *
-     * Authorization: Basic base64(client_id:client_secret)
      */
 
     const basicCredentials = Buffer
@@ -294,23 +295,27 @@ export default async (req) => {
       );
 
       return new Response(
-  JSON.stringify({
-    ok: false,
-    discord_error: tokenData.error || null,
-    discord_error_description:
-      tokenData.error_description || null,
-    http_status: tokenRes.status
-  }, null, 2),
-  {
-    status: 502,
-    headers: {
-      'content-type':
-        'application/json; charset=utf-8',
-      'cache-control':
-        'no-store'
+        JSON.stringify({
+          ok: false,
+          stage: 'token_exchange',
+          discord_error:
+            tokenData.error || null,
+          discord_error_description:
+            tokenData.error_description || null,
+          http_status:
+            tokenRes.status
+        }, null, 2),
+        {
+          status: 502,
+          headers: {
+            'content-type':
+              'application/json; charset=utf-8',
+            'cache-control':
+              'no-store'
+          }
+        }
+      );
     }
-  }
-);
 
     /*
      * ============================================================
