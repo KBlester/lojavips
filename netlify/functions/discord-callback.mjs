@@ -1,3 +1,10 @@
+export default async (req) => {
+  console.log('========== DISCORD CALLBACK FOI CHAMADO ==========');
+  console.log('METHOD:', req.method);
+  console.log('URL:', req.url);
+
+  try {
+
 import * as crypto from 'node:crypto';
 
 const DEFAULT_CLIENT_ID = '1548916664895144046';
