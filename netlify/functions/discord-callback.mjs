@@ -294,18 +294,23 @@ export default async (req) => {
       );
 
       return new Response(
-        'Não foi possível concluir a autorização do Discord.',
-        {
-          status: 502,
-          headers: {
-            'content-type':
-              'text/plain; charset=utf-8',
-            'cache-control':
-              'no-store'
-          }
-        }
-      );
+  JSON.stringify({
+    ok: false,
+    discord_error: tokenData.error || null,
+    discord_error_description:
+      tokenData.error_description || null,
+    http_status: tokenRes.status
+  }, null, 2),
+  {
+    status: 502,
+    headers: {
+      'content-type':
+        'application/json; charset=utf-8',
+      'cache-control':
+        'no-store'
     }
+  }
+);
 
     /*
      * ============================================================
