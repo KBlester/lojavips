@@ -172,34 +172,53 @@ async function api(url, options = {}) {
         throw new Error(`Servidor respondeu de forma inválida (${response.status}).`);
       }
 
-      // Um 404 na rota /api pode ser apenas problema de redirect do Netlify.
-      // Nesse caso tentamos a URL direta da Function.
       if (!response.ok) {
         const detail = data.error || data.message || '';
         const error = new Error(
-          detail ? `${detail} (HTTP ${response.status})` : `Erro do servidor (HTTP ${response.status}).`
+          detail
+            ? `${detail} (HTTP ${response.status})`
+            : `Erro do servidor (HTTP ${response.status}).`
         );
+
         error.status = response.status;
-        if (response.status === 404 && endpoint !== candidates[candidates.length - 1]) {
+
+        if (
+          response.status === 404 &&
+          endpoint !== candidates[candidates.length - 1]
+        ) {
           lastError = error;
           continue;
         }
+
         throw error;
       }
 
       return data;
     } catch (error) {
       lastError = error;
+
       if (error?.name === 'AbortError') {
-        lastError = new Error('Tempo limite ao conectar com o servidor.');
+        lastError = new Error(
+          'Tempo limite ao conectar com o servidor.'
+        );
       }
-      if (endpoint !== candidates[candidates.length - 1]) continue;
+
+      if (
+        endpoint !== candidates[candidates.length - 1]
+      ) {
+        continue;
+      }
     } finally {
       clearTimeout(timer);
     }
   }
 
-  throw lastError || new Error('Não foi possível conectar com o servidor.');
+  throw (
+    lastError ||
+    new Error(
+      'Não foi possível conectar com o servidor.'
+    )
+  );
 }
 
 function showSetup() {
@@ -277,7 +296,8 @@ async function setupAdmin() {
     await api('/api/auth', {
       method: 'POST',
       headers: {
-        'content-type': 'application/json'
+        'content-type':
+          'application/json'
       },
       body: JSON.stringify({
         action: 'setup',
@@ -323,7 +343,8 @@ async function login() {
     await api('/api/auth', {
       method: 'POST',
       headers: {
-        'content-type': 'application/json'
+        'content-type':
+          'application/json'
       },
       body: JSON.stringify({
         username,
@@ -376,7 +397,8 @@ $('#logoutBtn')?.addEventListener(
     await api('/api/auth', {
       method: 'POST',
       headers: {
-        'content-type': 'application/json'
+        'content-type':
+          'application/json'
       },
       body: JSON.stringify({
         action: 'logout'
@@ -461,85 +483,302 @@ $('#mobileMenu')?.addEventListener(
 
 async function loadAll() {
   try {
-    const results = await Promise.allSettled([
-      api('/api/store?resource=products'),
-      api('/api/store?resource=orders'),
-      api('/api/store?resource=customers'),
-      api('/api/store?resource=settings-admin')
-    ]);
+    const results =
+      await Promise.allSettled([
+        api(
+          '/api/store?resource=products'
+        ),
+        api(
+          '/api/store?resource=orders'
+        ),
+        api(
+          '/api/store?resource=customers'
+        ),
+        api(
+          '/api/store?resource=settings-admin'
+        )
+      ]);
 
-    const [products, orders, customers, settings] = results;
+    const [
+      products,
+      orders,
+      customers,
+      settings
+    ] = results;
 
-    if (products.status === 'rejected') {
+    if (
+      products.status ===
+      'rejected'
+    ) {
       throw products.reason;
     }
 
-    state.products = Array.isArray(products.value?.products)
-      ? products.value.products : [];
-    state.orders = orders.status === 'fulfilled' && Array.isArray(orders.value?.orders)
-      ? orders.value.orders : [];
-    state.customers = customers.status === 'fulfilled' && Array.isArray(customers.value?.customers)
-      ? customers.value.customers : [];
+    state.products =
+      Array.isArray(
+        products.value?.products
+      )
+        ? products.value.products
+        : [];
+
+    state.orders =
+      orders.status ===
+        'fulfilled' &&
+      Array.isArray(
+        orders.value?.orders
+      )
+        ? orders.value.orders
+        : [];
+
+    state.customers =
+      customers.status ===
+        'fulfilled' &&
+      Array.isArray(
+        customers.value?.customers
+      )
+        ? customers.value
+            .customers
+        : [];
+
     state.settings = {
       ...DEFAULT_APPEARANCE,
-      ...(settings.status === 'fulfilled' ? (settings.value?.settings || {}) : {})
+      ...(settings.status ===
+      'fulfilled'
+        ? settings.value
+            ?.settings || {}
+        : {})
     };
-    state.draft = clone(state.settings);
+
+    state.draft =
+      clone(state.settings);
+
     resetHistory();
+
     fillAllSettings();
+
     renderAll();
 
-    const page = location.hash.slice(1);
-    if (page && $('#' + page)) go(page);
+    const page =
+      location.hash.slice(1);
 
-    const status = $('#adminStatus');
+    if (
+      page &&
+      $('#' + page)
+    ) {
+      go(page);
+    }
+
+    const status =
+      $('#adminStatus');
+
     if (status) {
-      const partial = orders.status !== 'fulfilled' || customers.status !== 'fulfilled' || settings.status !== 'fulfilled';
-      status.textContent = partial ? '● Loja conectada (parcial)' : '● Loja conectada';
-      status.title = partial ? 'Produtos carregados; algum recurso administrativo não respondeu.' : '';
+      const partial =
+        orders.status !==
+          'fulfilled' ||
+        customers.status !==
+          'fulfilled' ||
+        settings.status !==
+          'fulfilled';
+
+      status.textContent =
+        partial
+          ? '● Loja conectada (parcial)'
+          : '● Loja conectada';
+
+      status.title =
+        partial
+          ? 'Produtos carregados; algum recurso administrativo não respondeu.'
+          : '';
     }
   } catch (error) {
-    console.error('SAPUCAIA LOAD:', error);
-    if (String(error?.message || '').includes('401') || String(error?.message || '').includes('Não autorizado')) {
+    console.error(
+      'SAPUCAIA LOAD:',
+      error
+    );
+
+    if (
+      String(
+        error?.message || ''
+      ).includes('401') ||
+      String(
+        error?.message || ''
+      ).includes(
+        'Não autorizado'
+      )
+    ) {
       showLogin();
       return;
     }
-    const status = $('#adminStatus');
+
+    const status =
+      $('#adminStatus');
+
     if (status) {
-      status.textContent = '● Loja offline';
-      status.title = error?.message || 'Não foi possível carregar os produtos.';
+      status.textContent =
+        '● Loja offline';
+
+      status.title =
+        error?.message ||
+        'Não foi possível carregar os produtos.';
     }
-    toast(error?.message || 'Não foi possível conectar com a loja.');
+
+    toast(
+      error?.message ||
+        'Não foi possível conectar com a loja.'
+    );
   }
 }
 
 function renderOrders() {
-  const table = $('#orderTable');
+  const table =
+    $('#orderTable');
+
   if (!table) return;
-  const filter = $('#orderStatusFilter')?.value || '';
-  const list = state.orders.filter(order => !filter || String(order.status || '') === filter);
-  if (!list.length) { table.innerHTML = '<div class="empty">Nenhum pedido encontrado.</div>'; return; }
-  table.innerHTML = `<table class="data-table"><thead><tr><th>PEDIDO</th><th>CLIENTE</th><th>STATUS</th><th>TOTAL</th><th>DATA</th></tr></thead><tbody>${list.map(order => {
-    const customer = order.personal || order.customer || {};
-    const date = order.createdAt || order.updatedAt;
-    return `<tr><td>${esc(order.id || '-')}</td><td>${esc(customer.name || order.name || 'Cliente')}</td><td>${esc(order.status || '-')}</td><td>${money(order.total)}</td><td>${esc(date ? new Date(date).toLocaleString('pt-BR') : '-')}</td></tr>`;
-  }).join('')}</tbody></table>`;
+
+  const filter =
+    $('#orderStatusFilter')
+      ?.value || '';
+
+  const list =
+    state.orders.filter(
+      (order) =>
+        !filter ||
+        String(
+          order.status || ''
+        ) === filter
+    );
+
+  if (!list.length) {
+    table.innerHTML =
+      '<div class="empty">Nenhum pedido encontrado.</div>';
+
+    return;
+  }
+
+  table.innerHTML =
+    `<table class="data-table"><thead><tr><th>PEDIDO</th><th>CLIENTE</th><th>STATUS</th><th>TOTAL</th><th>DATA</th></tr></thead><tbody>${list
+      .map((order) => {
+        const customer =
+          order.personal ||
+          order.customer ||
+          {};
+
+        const date =
+          order.createdAt ||
+          order.updatedAt;
+
+        return `<tr><td>${esc(
+          order.id || '-'
+        )}</td><td>${esc(
+          customer.name ||
+            order.name ||
+            'Cliente'
+        )}</td><td>${esc(
+          order.status || '-'
+        )}</td><td>${money(
+          order.total
+        )}</td><td>${esc(
+          date
+            ? new Date(
+                date
+              ).toLocaleString(
+                'pt-BR'
+              )
+            : '-'
+        )}</td></tr>`;
+      })
+      .join(
+        ''
+      )}</tbody></table>`;
 }
 
 function renderCustomers() {
-  const table = $('#customerTable');
+  const table =
+    $('#customerTable');
+
   if (!table) return;
-  if (!state.customers.length) { table.innerHTML = '<div class="empty">Nenhum cliente encontrado.</div>'; return; }
-  table.innerHTML = `<table class="data-table"><thead><tr><th>NOME</th><th>E-MAIL</th><th>TELEFONE</th><th>CPF</th></tr></thead><tbody>${state.customers.map(customer => `<tr><td>${esc(customer.name || customer.nome || '-')}</td><td>${esc(customer.email || '-')}</td><td>${esc(customer.phone || customer.telefone || '-')}</td><td>${esc(customer.cpf || '-')}</td></tr>`).join('')}</tbody></table>`;
+
+  if (!state.customers.length) {
+    table.innerHTML =
+      '<div class="empty">Nenhum cliente encontrado.</div>';
+
+    return;
+  }
+
+  table.innerHTML =
+    `<table class="data-table"><thead><tr><th>NOME</th><th>E-MAIL</th><th>TELEFONE</th><th>CPF</th></tr></thead><tbody>${state.customers
+      .map(
+        (customer) =>
+          `<tr><td>${esc(
+            customer.name ||
+              customer.nome ||
+              '-'
+          )}</td><td>${esc(
+            customer.email ||
+              '-'
+          )}</td><td>${esc(
+            customer.phone ||
+              customer.telefone ||
+              '-'
+          )}</td><td>${esc(
+            customer.cpf || '-'
+          )}</td></tr>`
+      )
+      .join(
+        ''
+      )}</tbody></table>`;
 }
 
 function renderCoupon() {
-  const code = String(state.settings?.couponCode || '').trim().toUpperCase();
-  const percent = Math.max(0, Math.min(100, Number(state.settings?.couponPercent) || 0));
-  if ($('#couponCodeAdmin') && document.activeElement !== $('#couponCodeAdmin')) $('#couponCodeAdmin').value = code;
-  if ($('#couponPercentAdmin') && document.activeElement !== $('#couponPercentAdmin')) $('#couponPercentAdmin').value = percent || '';
-  if ($('#couponPreview')) $('#couponPreview').textContent = code || 'SAPUCAIA50';
-  if ($('#couponHeadline')) $('#couponHeadline').textContent = `${percent || 50}% OFF EM TODOS OS PRODUTOS`;
+  const code =
+    String(
+      state.settings
+        ?.couponCode || ''
+    )
+      .trim()
+      .toUpperCase();
+
+  const percent =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        Number(
+          state.settings
+            ?.couponPercent
+        ) || 0
+      )
+    );
+
+  if (
+    $('#couponCodeAdmin') &&
+    document.activeElement !==
+      $('#couponCodeAdmin')
+  ) {
+    $('#couponCodeAdmin').value =
+      code;
+  }
+
+  if (
+    $('#couponPercentAdmin') &&
+    document.activeElement !==
+      $('#couponPercentAdmin')
+  ) {
+    $('#couponPercentAdmin').value =
+      percent || '';
+  }
+
+  if ($('#couponPreview')) {
+    $('#couponPreview').textContent =
+      code ||
+      'SAPUCAIA50';
+  }
+
+  if ($('#couponHeadline')) {
+    $('#couponHeadline').textContent =
+      `${
+        percent || 50
+      }% OFF EM TODOS OS PRODUTOS`;
+  }
 }
 
 function renderAll() {
@@ -761,7 +1000,19 @@ function renderProducts() {
 
                     <td>
                       ${esc(
-                        (['15 dias','30 dias','Até o wipe'].includes(String(p.valid||'')) ? p.valid : 'Até o wipe')
+                        (
+                          [
+                            '15 dias',
+                            '30 dias',
+                            'Até o wipe'
+                          ].includes(
+                            String(
+                              p.valid || ''
+                            )
+                          )
+                            ? p.valid
+                            : 'Até o wipe'
+                        )
                       )}
                     </td>
 
@@ -876,7 +1127,9 @@ function pushHistory() {
   updateHistoryButtons();
 }
 
-function applyDraftMutation(mutator) {
+function applyDraftMutation(
+  mutator
+) {
   const next =
     clone(state.draft);
 
@@ -955,7 +1208,9 @@ function updateHistoryButtons() {
   }
 }
 
-async function uploadFile(file) {
+async function uploadFile(
+  file
+) {
   if (!file)
     throw new Error(
       'Nenhum arquivo selecionado.'
@@ -1025,28 +1280,40 @@ function fillAllSettings() {
   const fields = {
     '#paymentProvider':
       s.paymentProvider,
+
     '#pixEnabled':
       s.pixEnabled,
+
     '#infinitePayEnabled':
       s.infinitePayEnabled,
+
     '#infinitePayHandle':
       s.infinitePayHandle,
+
     '#fivemServerName':
       s.fivemServerName,
+
     '#fivemWebhookUrl':
       s.fivemWebhookUrl,
+
     '#discordClientId':
       s.discordClientId,
+
     '#discordRedirectUri':
       s.discordRedirectUri,
+
     '#discordScopes':
       s.discordScopes,
+
     '#supportDiscordUrl':
       s.discordUrl,
+
     '#supportUrl':
       s.supportUrl,
+
     '#supportEmail':
       s.supportEmail,
+
     '#termsUrl':
       s.termsUrl
   };
@@ -1058,7 +1325,8 @@ function fillAllSettings() {
       if (!el) return;
 
       if (
-        el.type === 'checkbox'
+        el.type ===
+        'checkbox'
       ) {
         el.checked =
           Boolean(value);
@@ -1103,7 +1371,9 @@ async function saveSettings(
     };
 
     state.draft =
-      clone(state.settings);
+      clone(
+        state.settings
+      );
 
     resetHistory();
 
@@ -1119,7 +1389,9 @@ async function saveSettings(
   }
 }
 
-function openProduct(id = null) {
+function openProduct(
+  id = null
+) {
   state.editing =
     id
       ? state.products.find(
@@ -1141,18 +1413,37 @@ function openProduct(id = null) {
     product?.name || '';
 
   $('#fCat').value =
-    product?.cat || '';
+    product?.cat ||
+    'Destaques';
 
   $('#fPrice').value =
     product?.regularPrice ||
-    (Number(product?.old||product?.oldPrice||0)>Number(product?.price||0)?(product?.old||product?.oldPrice):product?.price) ||
+    (
+      Number(
+        product?.old ||
+        product?.oldPrice ||
+        0
+      ) >
+      Number(
+        product?.price ||
+        0
+      )
+        ? (
+            product?.old ||
+            product?.oldPrice
+          )
+        : product?.price
+    ) ||
     '';
 
   $('#fPromoPrice').value =
     product?.promoPrice ||
     '';
 
-  $('#fOld')?.setAttribute('value', '');
+  $('#fOld')?.setAttribute(
+    'value',
+    ''
+  );
 
   $('#fFeatured').value =
     String(
@@ -1190,16 +1481,29 @@ function openProduct(id = null) {
         )
       : '';
 
-  renderDeliveryItemsEditor(Array.isArray(product?.deliveryItems) ? product.deliveryItems : []);
+  renderDeliveryItemsEditor(
+    Array.isArray(
+      product?.deliveryItems
+    )
+      ? product.deliveryItems
+      : []
+  );
 
   if ($('#fMainFile'))
-    $('#fMainFile').value = '';
+    $('#fMainFile').value =
+      '';
 
-  if ($('#fDescImage1File'))
-    $('#fDescImage1File').value = '';
+  if (
+    $('#fDescImage1File')
+  )
+    $('#fDescImage1File').value =
+      '';
 
-  if ($('#fDescImage2File'))
-    $('#fDescImage2File').value = '';
+  if (
+    $('#fDescImage2File')
+  )
+    $('#fDescImage2File').value =
+      '';
 
   $('#productModal')?.classList.add(
     'open'
@@ -1221,10 +1525,10 @@ $('#closeProduct')?.addEventListener(
   closeProductModal
 );
 
-// Abre o editor de novo produto pelo botão do catálogo.
 $('#addProductBtn')?.addEventListener(
   'click',
-  () => openProduct()
+  () =>
+    openProduct()
 );
 
 $('#productModal')?.addEventListener(
@@ -1247,24 +1551,32 @@ function getProductFormData() {
 
   if (rawFaq) {
     try {
-      faq = JSON.parse(rawFaq);
+      faq = JSON.parse(
+        rawFaq
+      );
 
-      if (!Array.isArray(faq)) {
+      if (
+        !Array.isArray(
+          faq
+        )
+      ) {
         throw new Error();
       }
     } catch {
-      faq = rawFaq
-        .split(/\n+/)
-        .map(
-          (item) => ({
-            question: item.trim(),
-            answer: ''
-          })
-        )
-        .filter(
-          (item) =>
-            item.question
-        );
+      faq =
+        rawFaq
+          .split(/\n+/)
+          .map(
+            (item) => ({
+              question:
+                item.trim(),
+              answer: ''
+            })
+          )
+          .filter(
+            (item) =>
+              item.question
+          );
     }
   }
 
@@ -1274,41 +1586,49 @@ function getProductFormData() {
       makeId(),
 
     name:
-      $('#fName')?.value.trim() ||
+      $('#fName')
+        ?.value.trim() ||
       '',
 
     cat:
-      $('#fCat')?.value.trim() ||
+      $('#fCat')
+        ?.value.trim() ||
       '',
 
     price:
       Number(
-        $('#fPrice')?.value || 0
+        $('#fPrice')
+          ?.value || 0
       ),
 
     promoPrice:
       Number(
-        $('#fPromoPrice')?.value || 0
+        $('#fPromoPrice')
+          ?.value || 0
       ),
 
     regularPrice:
       Number(
-        $('#fPrice')?.value || 0
+        $('#fPrice')
+          ?.value || 0
       ),
 
     deliveryItems:
       getDeliveryItemsFromEditor(),
 
     featured:
-      $('#fFeatured')?.value ===
+      $('#fFeatured')
+        ?.value ===
       'true',
 
     active:
-      $('#fActive')?.value !==
+      $('#fActive')
+        ?.value !==
       'false',
 
     img:
-      $('#fMainUrl')?.value.trim() ||
+      $('#fMainUrl')
+        ?.value.trim() ||
       '',
 
     descImage1:
@@ -1322,7 +1642,8 @@ function getProductFormData() {
       '',
 
     description:
-      $('#fDesc')?.value.trim() ||
+      $('#fDesc')
+        ?.value.trim() ||
       '',
 
     faq
@@ -1363,8 +1684,14 @@ async function saveProduct(
       return;
     }
 
-    if (publish && !product.deliveryItems.length) {
-      toast('Adicione ao menos um item de entrega antes de publicar.');
+    if (
+      publish &&
+      !product.deliveryItems.length
+    ) {
+      toast(
+        'Adicione ao menos um item de entrega antes de publicar.'
+      );
+
       return;
     }
 
@@ -1410,8 +1737,13 @@ async function saveProduct(
         product.descImage2;
     }
 
-    product.publish = publish;
-    product.status = publish ? 'Publicado' : 'Rascunho';
+    product.publish =
+      publish;
+
+    product.status =
+      publish
+        ? 'Publicado'
+        : 'Rascunho';
 
     await api(
       '/api/store?resource=products',
@@ -1444,20 +1776,54 @@ async function saveProduct(
   }
 }
 
-$('#addDeliveryItem')?.addEventListener('click',()=>{
-  const items=getDeliveryItemsFromEditor();
-  items.push({code:'',name:'',validity:'30 dias'});
-  renderDeliveryItemsEditor(items);
-});
+$('#addDeliveryItem')?.addEventListener(
+  'click',
+  () => {
+    const items =
+      getDeliveryItemsFromEditor();
 
-$('#deliveryItemsEditor')?.addEventListener('input',updateProductPreview);
-$('#deliveryItemsEditor')?.addEventListener('change',updateProductPreview);
-$('#deliveryItemsEditor')?.addEventListener('click',e=>{
-  const btn=e.target.closest('.remove-delivery-item');
-  if(!btn)return;
-  const row=btn.closest('.delivery-item-row'); row?.remove();
-  updateProductPreview();
-});
+    items.push({
+      code: '',
+      name: '',
+      validity: '30 dias'
+    });
+
+    renderDeliveryItemsEditor(
+      items
+    );
+  }
+);
+
+$('#deliveryItemsEditor')?.addEventListener(
+  'input',
+  updateProductPreview
+);
+
+$('#deliveryItemsEditor')?.addEventListener(
+  'change',
+  updateProductPreview
+);
+
+$('#deliveryItemsEditor')?.addEventListener(
+  'click',
+  (e) => {
+    const btn =
+      e.target.closest(
+        '.remove-delivery-item'
+      );
+
+    if (!btn) return;
+
+    const row =
+      btn.closest(
+        '.delivery-item-row'
+      );
+
+    row?.remove();
+
+    updateProductPreview();
+  }
+);
 
 $('#saveProduct')?.addEventListener(
   'click',
@@ -1471,7 +1837,9 @@ $('#saveProductDraft')?.addEventListener(
     saveProduct(false)
 );
 
-async function deleteProduct(id) {
+async function deleteProduct(
+  id
+) {
   if (
     !confirm(
       'Remover este produto?'
@@ -1505,41 +1873,297 @@ async function deleteProduct(id) {
   }
 }
 
-function getDeliveryItemsFromEditor(){
-  return $$('#deliveryItemsEditor .delivery-item-row').map(row=>({
-    code:row.querySelector('[data-field="code"]')?.value.trim()||'',
-    name:row.querySelector('[data-field="name"]')?.value.trim()||'',
-    validity:row.querySelector('[data-field="validity"]')?.value||'Até o wipe'
-  })).filter(x=>x.code&&x.name);
+function getDeliveryItemsFromEditor() {
+  return $$('#deliveryItemsEditor .delivery-item-row')
+    .map(
+      (row) => ({
+        code:
+          row
+            .querySelector(
+              '[data-field="code"]'
+            )
+            ?.value.trim() ||
+          '',
+
+        name:
+          row
+            .querySelector(
+              '[data-field="name"]'
+            )
+            ?.value.trim() ||
+          '',
+
+        validity:
+          row
+            .querySelector(
+              '[data-field="validity"]'
+            )
+            ?.value ||
+          'Até o wipe'
+      })
+    )
+    .filter(
+      (x) =>
+        x.code &&
+        x.name
+    );
 }
 
-function renderDeliveryItemsEditor(items=[]){
-  const el=$('#deliveryItemsEditor');
-  if(!el)return;
-  const safe=Array.isArray(items)&&items.length?items:[{code:'',name:'',validity:'30 dias'}];
-  el.innerHTML=safe.map((item,i)=>`<div class="delivery-item-row" data-index="${i}"><input data-field="code" value="${esc(item.code||'')}" placeholder="Código interno"><input data-field="name" value="${esc(item.name||'')}" placeholder="Nome do item"><select data-field="validity"><option value="15 dias" ${item.validity==='15 dias'?'selected':''}>15 dias</option><option value="30 dias" ${item.validity==='30 dias'?'selected':''}>30 dias</option><option value="Até o wipe" ${item.validity==='Até o wipe'?'selected':''}>Até o wipe</option></select><button type="button" class="remove-delivery-item ghost" title="Remover">×</button></div>`).join('');
+function renderDeliveryItemsEditor(
+  items = []
+) {
+  const el =
+    $('#deliveryItemsEditor');
+
+  if (!el) return;
+
+  const safe =
+    Array.isArray(items) &&
+    items.length
+      ? items
+      : [
+          {
+            code: '',
+            name: '',
+            validity:
+              '30 dias'
+          }
+        ];
+
+  el.innerHTML =
+    safe
+      .map(
+        (item, i) =>
+          `<div class="delivery-item-row" data-index="${i}"><input data-field="code" value="${esc(item.code || '')}" placeholder="Código interno"><input data-field="name" value="${esc(item.name || '')}" placeholder="Nome do item"><select data-field="validity"><option value="15 dias" ${
+            item.validity ===
+            '15 dias'
+              ? 'selected'
+              : ''
+          }>15 dias</option><option value="30 dias" ${
+            item.validity ===
+            '30 dias'
+              ? 'selected'
+              : ''
+          }>30 dias</option><option value="Até o wipe" ${
+            item.validity ===
+            'Até o wipe'
+              ? 'selected'
+              : ''
+          }>Até o wipe</option></select><button type="button" class="remove-delivery-item ghost" title="Remover">×</button></div>`
+      )
+      .join('');
+
   updateProductPreview();
 }
 
 function updateProductPreview() {
-  const preview=$('#productLivePreview')||$('#productPreview');
-  if(!preview)return;
-  const name=$('#fName')?.value.trim()||'Nome do produto';
-  const cat=$('#fCat')?.value||'Destaques';
-  const price=Number($('#fPrice')?.value||0);
-  const promo=Number($('#fPromoPrice')?.value||0);
-  const active=$('#fActive')?.value!=='false';
-  const featured=$('#fFeatured')?.value==='true';
-  const img=$('#fMainUrl')?.value.trim()||'assets/banner-sapucaia.png';
-  const descImage1=$('#fDescImage1Url')?.value.trim()||'';
-  const descImage2=$('#fDescImage2Url')?.value.trim()||'';
-  const desc=$('#fDesc')?.value.trim()||'A descrição do produto aparecerá aqui.';
-  let faq=[]; const faqRaw=$('#fFaq')?.value.trim()||'';
-  if(faqRaw){try{const parsed=JSON.parse(faqRaw); if(Array.isArray(parsed))faq=parsed;}catch{faq=faqRaw.split(/\n+/).filter(Boolean).map(x=>({question:x.replace(/:.*/, '').trim()||x.trim(),answer:x.includes(':')?x.split(':').slice(1).join(':').trim():''}));}}
-  const items=getDeliveryItemsFromEditor();
-  const faqHtml=faq.length?faq.map((x,i)=>`<details class="adm-preview-faq" ${i===0?'open':''}><summary>${esc(x.question||x.q||'Dúvida')}<b>+</b></summary><p>${esc(x.answer||x.a||'')}</p></details>`).join(''):'<p>Nenhuma dúvida frequente cadastrada.</p>';
-  const media=[descImage1,descImage2].filter(Boolean);
-  preview.innerHTML=`<div class="adm-preview-device"><div class="adm-preview-status ${active?'active':''}">${active?'ATIVO':'INATIVO'}${featured?' • DESTAQUE':''}</div><article class="adm-preview-card"><div class="adm-preview-cover"><img src="${esc(img)}" onerror="this.src='assets/banner-sapucaia.png'" alt=""><span>${esc(cat)}</span></div><div class="adm-preview-card-body"><small>PREVIEW DA LOJA</small><h3>${esc(name)}</h3><div>${promo>0&&promo<price?`<del>${money(price)}</del> <strong>${money(promo)}</strong>`:`<strong>${money(price)}</strong>`}</div><button type="button" class="adm-preview-info">!</button></div></article><section class="adm-preview-detail"><div class="adm-preview-title"><span>📦</span><div><small>ENTREGA</small><h4>Itens inclusos</h4></div></div><div class="adm-preview-items">${items.length?items.map(x=>`<div><strong>${esc(x.name)}</strong><span>${esc(x.validity)}</span></div>`).join(''):'<p>Adicione itens de entrega para visualizá-los aqui.</p>'}</div><div class="adm-preview-title"><span>≡</span><div><small>SOBRE O PRODUTO</small><h4>Descrição</h4></div></div><p>${esc(desc).replace(/\n/g,'<br>')}</p>${media.length?`<div class="adm-preview-media">${media.map((x,i)=>`<img src="${esc(x)}" alt="Imagem ${i+1}">`).join('')}</div>`:''}<div class="adm-preview-title"><span>?</span><div><small>FINAL DA DESCRIÇÃO</small><h4>Dúvidas frequentes</h4></div></div><div class="adm-preview-faq-list">${faqHtml}</div></section></div>`;
+  const preview =
+    $('#productLivePreview') ||
+    $('#productPreview');
+
+  if (!preview) return;
+
+  const name =
+    $('#fName')
+      ?.value.trim() ||
+    'Nome do produto';
+
+  const cat =
+    $('#fCat')?.value ||
+    'Destaques';
+
+  const price =
+    Number(
+      $('#fPrice')
+        ?.value || 0
+    );
+
+  const promo =
+    Number(
+      $('#fPromoPrice')
+        ?.value || 0
+    );
+
+  const active =
+    $('#fActive')
+      ?.value !==
+    'false';
+
+  const featured =
+    $('#fFeatured')
+      ?.value ===
+    'true';
+
+  const img =
+    $('#fMainUrl')
+      ?.value.trim() ||
+    'assets/banner-sapucaia.png';
+
+  const descImage1 =
+    $('#fDescImage1Url')
+      ?.value.trim() ||
+    '';
+
+  const descImage2 =
+    $('#fDescImage2Url')
+      ?.value.trim() ||
+    '';
+
+  const desc =
+    $('#fDesc')
+      ?.value.trim() ||
+    'A descrição do produto aparecerá aqui.';
+
+  let faq = [];
+
+  const faqRaw =
+    $('#fFaq')
+      ?.value.trim() ||
+    '';
+
+  if (faqRaw) {
+    try {
+      const parsed =
+        JSON.parse(
+          faqRaw
+        );
+
+      if (
+        Array.isArray(
+          parsed
+        )
+      ) {
+        faq =
+          parsed;
+      }
+    } catch {
+      faq =
+        faqRaw
+          .split(/\n+/)
+          .filter(
+            Boolean
+          )
+          .map(
+            (x) => ({
+              question:
+                x
+                  .replace(
+                    /:.*/,
+                    ''
+                  )
+                  .trim() ||
+                x.trim(),
+
+              answer:
+                x.includes(
+                  ':'
+                )
+                  ? x
+                      .split(
+                        ':'
+                      )
+                      .slice(
+                        1
+                      )
+                      .join(
+                        ':'
+                      )
+                      .trim()
+                  : ''
+            })
+          );
+    }
+  }
+
+  const items =
+    getDeliveryItemsFromEditor();
+
+  const faqHtml =
+    faq.length
+      ? faq
+          .map(
+            (x, i) =>
+              `<details class="adm-preview-faq" ${
+                i === 0
+                  ? 'open'
+                  : ''
+              }><summary>${esc(
+                x.question ||
+                  x.q ||
+                  'Dúvida'
+              )}<b>+</b></summary><p>${esc(
+                x.answer ||
+                  x.a ||
+                  ''
+              )}</p></details>`
+          )
+          .join('')
+      : '<p>Nenhuma dúvida frequente cadastrada.</p>';
+
+  const media =
+    [
+      descImage1,
+      descImage2
+    ].filter(Boolean);
+
+  preview.innerHTML =
+    `<div class="adm-preview-device"><div class="adm-preview-status ${
+      active
+        ? 'active'
+        : ''
+    }">${active ? 'ATIVO' : 'INATIVO'}${
+      featured
+        ? ' • DESTAQUE'
+        : ''
+    }</div><article class="adm-preview-card"><div class="adm-preview-cover"><img src="${esc(
+      img
+    )}" onerror="this.src='assets/banner-sapucaia.png'" alt=""><span>${esc(
+      cat
+    )}</span></div><div class="adm-preview-card-body"><small>PREVIEW DA LOJA</small><h3>${esc(
+      name
+    )}</h3><div>${
+      promo > 0 &&
+      promo < price
+        ? `<del>${money(
+            price
+          )}</del> <strong>${money(
+            promo
+          )}</strong>`
+        : `<strong>${money(
+            price
+          )}</strong>`
+    }</div><button type="button" class="adm-preview-info">!</button></div></article><section class="adm-preview-detail"><div class="adm-preview-title"><span>📦</span><div><small>ENTREGA</small><h4>Itens inclusos</h4></div></div><div class="adm-preview-items">${
+      items.length
+        ? items
+            .map(
+              (x) =>
+                `<div><strong>${esc(
+                  x.name
+                )}</strong><span>${esc(
+                  x.validity
+                )}</span></div>`
+            )
+            .join('')
+        : '<p>Adicione itens de entrega para visualizá-los aqui.</p>'
+    }</div><div class="adm-preview-title"><span>≡</span><div><small>SOBRE O PRODUTO</small><h4>Descrição</h4></div></div><p>${esc(
+      desc
+    ).replace(
+      /\n/g,
+      '<br>'
+    )}</p>${
+      media.length
+        ? `<div class="adm-preview-media">${media
+            .map(
+              (x, i) =>
+                `<img src="${esc(
+                  x
+                )}" alt="Imagem ${
+                  i + 1
+                }">`
+            )
+            .join('')}</div>`
+        : ''
+    }<div class="adm-preview-title"><span>?</span><div><small>FINAL DA DESCRIÇÃO</small><h4>Dúvidas frequentes</h4></div></div><div class="adm-preview-faq-list">${faqHtml}</div></section></div>`;
 }
 
 [
@@ -1555,70 +2179,80 @@ function updateProductPreview() {
   '#fDescImage2Url',
   '#fDesc',
   '#fFaq'
-].forEach((id) => {
-  const el = $(id);
+].forEach(
+  (id) => {
+    const el = $(id);
 
-  if (!el) return;
+    if (!el) return;
 
-  el.addEventListener(
-    'input',
-    updateProductPreview
-  );
+    el.addEventListener(
+      'input',
+      updateProductPreview
+    );
 
-  el.addEventListener(
-    'change',
-    updateProductPreview
-  );
-});
+    el.addEventListener(
+      'change',
+      updateProductPreview
+    );
+  }
+);
 
 [
   '#fMainFile',
   '#fDescImage1File',
   '#fDescImage2File'
-].forEach((id) => {
-  const el = $(id);
+].forEach(
+  (id) => {
+    const el = $(id);
 
-  if (!el) return;
+    if (!el) return;
 
-  el.addEventListener(
-    'change',
-    updateProductPreview
-  );
-});
+    el.addEventListener(
+      'change',
+      updateProductPreview
+    );
+  }
+);
 
 const colorFields = [
-  ['#primaryColor', 'primaryColor'],
   [
-    '#secondaryColor',
+    '#colorPrimary',
+    'primaryColor'
+  ],
+  [
+    '#colorSecondary',
     'secondaryColor'
   ],
   [
-    '#backgroundColor',
+    '#colorBackground',
     'backgroundColor'
   ],
   [
-    '#surfaceColor',
+    '#colorSurface',
     'surfaceColor'
   ],
-  ['#textColor', 'textColor'],
   [
-    '#mutedColor',
+    '#colorText',
+    'textColor'
+  ],
+  [
+    '#colorMuted',
     'mutedColor'
   ],
   [
-    '#buttonColor',
+    '#colorButton',
     'buttonColor'
   ],
   [
-    '#buttonHoverColor',
+    '#colorButtonHover',
     'buttonHoverColor'
   ],
   [
-    '#borderColor',
+    '#colorBorder',
     'borderColor'
   ],
   [
-    '#priceColor',
+    '#colorPrice',
     'priceColor'
   ]
 ];
@@ -1665,6 +2299,9 @@ function bindColor(
           value.toLowerCase();
       }
     );
+
+    color.value =
+      value.toLowerCase();
   };
 }
 
@@ -1998,48 +2635,50 @@ function fillEditor(
     '#cardBorder',
     '#productColumns',
     '#marqueeGlow'
-  ].forEach((id) => {
-    const key =
-      ({
-        '#bannerFit':
-          'bannerFit',
-        '#bannerEffect':
-          'bannerEffect',
-        '#backgroundSize':
-          'backgroundSize',
-        '#buttonStyle':
-          'buttonStyle',
-        '#buttonGlow':
-          'buttonGlow',
-        '#buttonShadow':
-          'buttonShadow',
-        '#buttonBorder':
-          'buttonBorder',
-        '#buttonAnimation':
-          'buttonAnimation',
-        '#headingFont':
-          'headingFont',
-        '#bodyFont':
-          'bodyFont',
-        '#buttonFont':
-          'buttonFont',
-        '#headingWeight':
-          'headingWeight',
-        '#cardGlow':
-          'cardGlow',
-        '#cardBorder':
-          'cardBorder',
-        '#productColumns':
-          'productColumns',
-        '#marqueeGlow':
-          'marqueeGlow'
-      })[id];
+  ].forEach(
+    (id) => {
+      const key =
+        ({
+          '#bannerFit':
+            'bannerFit',
+          '#bannerEffect':
+            'bannerEffect',
+          '#backgroundSize':
+            'backgroundSize',
+          '#buttonStyle':
+            'buttonStyle',
+          '#buttonGlow':
+            'buttonGlow',
+          '#buttonShadow':
+            'buttonShadow',
+          '#buttonBorder':
+            'buttonBorder',
+          '#buttonAnimation':
+            'buttonAnimation',
+          '#headingFont':
+            'headingFont',
+          '#bodyFont':
+            'bodyFont',
+          '#buttonFont':
+            'buttonFont',
+          '#headingWeight':
+            'headingWeight',
+          '#cardGlow':
+            'cardGlow',
+          '#cardBorder':
+            'cardBorder',
+          '#productColumns':
+            'productColumns',
+          '#marqueeGlow':
+            'marqueeGlow'
+        })[id];
 
-    bindSelect(
-      id,
-      key
-    );
-  });
+      bindSelect(
+        id,
+        key
+      );
+    }
+  );
 
   [
     '#fxParticles',
@@ -2048,28 +2687,30 @@ function fillEditor(
     '#fxNoise',
     '#fxCursorGlow',
     '#reducedMotion'
-  ].forEach((id) => {
-    const key =
-      ({
-        '#fxParticles':
-          'fxParticles',
-        '#fxStars':
-          'fxStars',
-        '#fxGrid':
-          'fxGrid',
-        '#fxNoise':
-          'fxNoise',
-        '#fxCursorGlow':
-          'fxCursorGlow',
-        '#reducedMotion':
-          'reducedMotion'
-      })[id];
+  ].forEach(
+    (id) => {
+      const key =
+        ({
+          '#fxParticles':
+            'fxParticles',
+          '#fxStars':
+            'fxStars',
+          '#fxGrid':
+            'fxGrid',
+          '#fxNoise':
+            'fxNoise',
+          '#fxCursorGlow':
+            'fxCursorGlow',
+          '#reducedMotion':
+            'reducedMotion'
+        })[id];
 
-    bindCheck(
-      id,
-      key
-    );
-  });
+      bindCheck(
+        id,
+        key
+      );
+    }
+  );
 
   [
     [
@@ -2616,43 +3257,86 @@ async function syncAdminNow() {
     let sync;
 
     try {
-      sync = await api('/api/store?resource=sync');
+      sync = await api(
+        '/api/store?resource=sync'
+      );
     } catch (firstError) {
-      // Compatibilidade com deploys antigos que ainda não possuem
-      // o endpoint agregado de sincronização.
-      if (String(firstError?.message || '').includes('HTTP 404')) {
-        const [products, orders, customers, settings] =
+      if (
+        String(
+          firstError?.message ||
+            ''
+        ).includes(
+          'HTTP 404'
+        )
+      ) {
+        const [
+          products,
+          orders,
+          customers,
+          settings
+        ] =
           await Promise.all([
-            api('/api/store?resource=products'),
-            api('/api/store?resource=orders'),
-            api('/api/store?resource=customers'),
-            api('/api/store?resource=settings-admin')
+            api(
+              '/api/store?resource=products'
+            ),
+            api(
+              '/api/store?resource=orders'
+            ),
+            api(
+              '/api/store?resource=customers'
+            ),
+            api(
+              '/api/store?resource=settings-admin'
+            )
           ]);
 
         sync = {
           ok: true,
           connected: true,
           partial: false,
-          products: products.products || [],
-          orders: orders.orders || [],
-          customers: customers.customers || [],
-          settings: settings.settings || null
+          products:
+            products.products ||
+            [],
+          orders:
+            orders.orders ||
+            [],
+          customers:
+            customers.customers ||
+            [],
+          settings:
+            settings.settings ||
+            null
         };
       } else {
         throw firstError;
       }
     }
 
-    if (Array.isArray(sync.products)) {
-      state.products = sync.products;
+    if (
+      Array.isArray(
+        sync.products
+      )
+    ) {
+      state.products =
+        sync.products;
     }
 
-    if (Array.isArray(sync.orders)) {
-      state.orders = sync.orders;
+    if (
+      Array.isArray(
+        sync.orders
+      )
+    ) {
+      state.orders =
+        sync.orders;
     }
 
-    if (Array.isArray(sync.customers)) {
-      state.customers = sync.customers;
+    if (
+      Array.isArray(
+        sync.customers
+      )
+    ) {
+      state.customers =
+        sync.customers;
     }
 
     if (sync.settings) {
@@ -2664,53 +3348,128 @@ async function syncAdminNow() {
 
     renderAll();
 
-    const status = $('#adminStatus');
+    const status =
+      $('#adminStatus');
+
     if (status) {
-      if (sync.connected && sync.partial) {
+      if (
+        sync.connected &&
+        sync.partial
+      ) {
         status.textContent =
           '● Conectado (sincronização parcial)';
-        status.title = Array.isArray(sync.errors)
-          ? sync.errors.map(e => `${e.resource}: ${e.error}`).join(' | ')
-          : '';
+
+        status.title =
+          Array.isArray(
+            sync.errors
+          )
+            ? sync.errors
+                .map(
+                  (e) =>
+                    `${e.resource}: ${e.error}`
+                )
+                .join(
+                  ' | '
+                )
+            : '';
       } else {
-        status.textContent = '● Sincronizado';
-        status.title = '';
+        status.textContent =
+          '● Sincronizado';
+
+        status.title =
+          '';
       }
     }
   } catch (error) {
-    console.error('SAPUCAIA SYNC:', error);
+    console.error(
+      'SAPUCAIA SYNC:',
+      error
+    );
 
-    if (String(error?.message || '').includes('HTTP 401')) {
+    if (
+      String(
+        error?.message ||
+          ''
+      ).includes(
+        'HTTP 401'
+      )
+    ) {
       showLogin();
     }
 
-    const status = $('#adminStatus');
+    const status =
+      $('#adminStatus');
+
     if (status) {
-      status.textContent = '● Erro de conexão com o servidor';
-      status.title = error?.message || 'Falha ao sincronizar.';
+      status.textContent =
+        '● Erro de conexão com o servidor';
+
+      status.title =
+        error?.message ||
+        'Falha ao sincronizar.';
     }
   } finally {
-    syncInFlight = false;
+    syncInFlight =
+      false;
   }
 }
 
-setInterval(syncAdminNow, 3000);
+setInterval(
+  syncAdminNow,
+  3000
+);
 
-// Nunca deixe o /admin completamente vazio por causa de uma exceção de JS.
-window.addEventListener('error', (event) => {
-  console.error('SAPUCAIA ADMIN ERROR:', event.error || event.message);
-  const app = $('#app');
-  const login = $('#loginScreen');
-  const setup = $('#setupScreen');
-  if (app && login && setup && app.classList.contains('hidden') && setup.classList.contains('hidden')) {
-    login.classList.remove('hidden');
+window.addEventListener(
+  'error',
+  (event) => {
+    console.error(
+      'SAPUCAIA ADMIN ERROR:',
+      event.error ||
+        event.message
+    );
+
+    const app =
+      $('#app');
+
+    const login =
+      $('#loginScreen');
+
+    const setup =
+      $('#setupScreen');
+
+    if (
+      app &&
+      login &&
+      setup &&
+      app.classList.contains(
+        'hidden'
+      ) &&
+      setup.classList.contains(
+        'hidden'
+      )
+    ) {
+      login.classList.remove(
+        'hidden'
+      );
+    }
+
+    const status =
+      $('#adminStatus');
+
+    if (status)
+      status.textContent =
+        '● Erro no painel';
   }
-  const status = $('#adminStatus');
-  if (status) status.textContent = '● Erro no painel';
-});
+);
 
-window.addEventListener('unhandledrejection', (event) => {
-  console.error('SAPUCAIA ADMIN REJECTION:', event.reason);
-});
+window.addEventListener(
+  'unhandledrejection',
+  (event) => {
+    console.error(
+      'SAPUCAIA ADMIN REJECTION:',
+      event.reason
+    );
+  }
+);
 
 boot();
