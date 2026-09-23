@@ -3,13 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <meta name="theme-color" content="#ff087f">
+  <meta name="theme-color" content="#fa0375">
   <meta name="description" content="SAPUCAIA — Loja Oficial do servidor FiveM Rio de Janeiro.">
   <title>SAPUCAIA • Loja Oficial</title>
 
-  <!-- FAVICON DO CRISTO -->
   <link rel="icon" type="image/png" href="/assets/cristo.png/cristo%202.png">
-
   <link rel="stylesheet" href="style.css">
   <meta property="og:image" content="https://bolt.new/static/og_default.png">
     <meta name="twitter:card" content="summary_large_image">
@@ -33,9 +31,9 @@
     </a>
 
     <nav class="main-nav">
-      <button data-scroll="#inicio" class="nav-link active">⌂ <span>Início</span></button>
-      <button data-scroll="#suporte" class="nav-link">◉ <span>Suporte</span></button>
-      <button data-scroll="#pedidos" class="nav-link">▤ <span>Meus Pedidos</span></button>
+      <button data-scroll="#inicio" class="nav-link active">Início</button>
+      <button data-scroll="#suporte" class="nav-link">Suporte</button>
+      <button data-scroll="#pedidos" class="nav-link">Meus Pedidos</button>
     </nav>
 
     <div class="top-actions">
@@ -49,7 +47,7 @@
   <main id="inicio">
     <section class="hero-wrap">
       <div class="hero-banner">
-        <img src="assets/banner-sapucaia.png" alt="Banner SAPUCAIA">
+        <img src="assets/banner sapucaia.png" alt="Banner SAPUCAIA">
         <div class="hero-shine"></div>
       </div>
     </section>
@@ -73,19 +71,19 @@
     </section>
 
     <section class="categories" aria-label="Categorias">
-      <button class="cat " data-category="Novidades"><span class="cat-icon">🆕</span><span>Novidades</span></button>
+      <button class="cat" data-category="Novidades"><span class="cat-icon">🆕</span><span>Novidades</span></button>
       <button class="cat active" data-category="Destaques"><span class="cat-icon">⭐</span><span>Destaques</span></button>
-      <button class="cat " data-category="Edição Limitada"><span class="cat-icon">🔥</span><span>Edição Limitada</span></button>
-      <button class="cat " data-category="Planos VIP"><span class="cat-icon">💎</span><span>Planos VIP</span></button>
-      <button class="cat " data-category="Carros VIPS/LUXOS"><span class="cat-icon">🚗</span><span>Carros VIPS/LUXOS</span></button>
-      <button class="cat " data-category="Especiais"><span class="cat-icon">✨</span><span>Especiais</span></button>
-      <button class="cat " data-category="Caminhões"><span class="cat-icon">🚛</span><span>Caminhões</span></button>
-      <button class="cat " data-category="Aeronaves"><span class="cat-icon">✈️</span><span>Aeronaves</span></button>
-      <button class="cat " data-category="Extras"><span class="cat-icon">🎁</span><span>Extras</span></button>
-      <button class="cat " data-category="Dinheiro"><span class="cat-icon">💰</span><span>Dinheiro</span></button>
-      <button class="cat " data-category="Orgs"><span class="cat-icon">🏢</span><span>Orgs</span></button>
-      <button class="cat " data-category="Casas"><span class="cat-icon">🏠</span><span>Casas</span></button>
-      <button class="cat " data-category="Punições"><span class="cat-icon">⚠️</span><span>Punições</span></button>
+      <button class="cat" data-category="Edição Limitada"><span class="cat-icon">🔥</span><span>Edição Limitada</span></button>
+      <button class="cat" data-category="Planos VIP"><span class="cat-icon">💎</span><span>Planos VIP</span></button>
+      <button class="cat" data-category="Carros VIPS/LUXOS"><span class="cat-icon">🚗</span><span>Carros VIPS/LUXOS</span></button>
+      <button class="cat" data-category="Especiais"><span class="cat-icon">✨</span><span>Especiais</span></button>
+      <button class="cat" data-category="Caminhões"><span class="cat-icon">🚛</span><span>Caminhões</span></button>
+      <button class="cat" data-category="Aeronaves"><span class="cat-icon">✈️</span><span>Aeronaves</span></button>
+      <button class="cat" data-category="Extras"><span class="cat-icon">🎁</span><span>Extras</span></button>
+      <button class="cat" data-category="Dinheiro"><span class="cat-icon">💰</span><span>Dinheiro</span></button>
+      <button class="cat" data-category="Orgs"><span class="cat-icon">🏢</span><span>Orgs</span></button>
+      <button class="cat" data-category="Casas"><span class="cat-icon">🏠</span><span>Casas</span></button>
+      <button class="cat" data-category="Punições"><span class="cat-icon">⚠️</span><span>Punições</span></button>
     </section>
 
     <section class="store-layout">
@@ -109,7 +107,13 @@
             <h1 id="sectionTitle">PRODUTOS EM DESTAQUE</h1>
             <span id="sectionSub">Os itens mais procurados da nossa loja.</span>
           </div>
-          <button id="viewAll" class="outline-btn">Ver todos →</button>
+          <div class="head-actions">
+            <div class="view-toggle">
+              <button class="view-btn active" data-view="grid" title="Visualizar em grade">▦</button>
+              <button class="view-btn" data-view="list" title="Visualizar em lista">☰</button>
+            </div>
+            <button id="viewAll" class="outline-btn">Ver todos →</button>
+          </div>
         </div>
 
         <div id="productsGrid" class="products-grid"></div>
@@ -224,7 +228,7 @@
 
         <details>
           <summary>Como funciona o pagamento?</summary>
-          <p>O pagamento é criado pelo backend conforme o método habilitado no painel ADM.</p>
+          <p>O pagamento é processado pelo backend conforme o método habilitado no painel ADM.</p>
         </details>
 
         <details>
